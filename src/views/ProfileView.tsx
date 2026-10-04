@@ -15,6 +15,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useLocation, POPULAR_LOCATIONS } from '../context/LocationContext';
 import { CompanionPaymentSettings } from '../types';
+import { sanitizeErrorMessage } from '../utils/security';
 
 interface ProfileViewProps {
   initialSubTab?: 'general' | 'payments';
@@ -89,9 +90,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ initialSubTab = 'gener
     const { error } = await updateProfile(updates);
 
     if (error) {
-      setErrorMessage(error.message);
+      setErrorMessage(sanitizeErrorMessage(error, 'Unable to update profile. Please try again.'));
     } else {
-      setSuccessMessage('Profile and payment settings saved successfully to Supabase database!');
+      setSuccessMessage('Profile and payment settings saved successfully!');
       await refreshProfile();
       setTimeout(() => setSuccessMessage(null), 3500);
     }
@@ -111,7 +112,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ initialSubTab = 'gener
             {isCompanion ? 'Companion Profile & Configuration' : 'My Account & Profile'}
           </h1>
           <p className="text-xs text-gray-500 mt-0.5">
-            Real user UUID: <span className="font-mono text-gray-700">{user?.id}</span>
+            Manage your personal profile, services, and preferences.
           </p>
         </div>
 
@@ -179,7 +180,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ initialSubTab = 'gener
 
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Email Address (Supabase Authenticated)
+                  Email Address (Verified Account)
                 </label>
                 <input
                   type="email"
@@ -477,7 +478,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ initialSubTab = 'gener
             ) : (
               <>
                 <Save className="w-4 h-4" />
-                Save Changes to Supabase
+                Save Changes
               </>
             )}
           </button>

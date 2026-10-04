@@ -10,6 +10,7 @@ import {
 import { Conversation, Message, Profile } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { getSupabaseClient, parseProfileRecord } from '../lib/supabase';
+import { sanitizeErrorMessage } from '../utils/security';
 
 interface MessagesViewProps {
   initialTargetUserId?: string | null;
@@ -46,7 +47,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ initialTargetUserId 
         .order('created_at', { ascending: false });
 
       if (error) {
-        setErrorMessage(error.message);
+        setErrorMessage(sanitizeErrorMessage(error, 'Unable to load conversations.'));
         setConversations([]);
       } else {
         const convs = data || [];
@@ -119,7 +120,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ initialTargetUserId 
         }
       }
     } catch (err: any) {
-      setErrorMessage(err.message || 'Error loading conversations.');
+      setErrorMessage(sanitizeErrorMessage(err, 'Unable to load conversations.'));
       setConversations([]);
     } finally {
       setLoadingConversations(false);
@@ -149,13 +150,13 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ initialTargetUserId 
           .order('created_at', { ascending: true });
 
         if (error) {
-          console.warn('Error fetching messages:', error.message);
+          // Handled gracefully without dumping error payload to console
         } else if (isMounted) {
           setMessages(data || []);
           setTimeout(scrollToBottom, 100);
         }
-      } catch (err) {
-        console.error('Messages load error:', err);
+      } catch {
+        // Handled silently
       } finally {
         if (isMounted) setLoadingMessages(false);
       }
@@ -234,7 +235,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ initialTargetUserId 
         })
         .eq('id', activeConversation.id);
     } catch (err: any) {
-      alert(`Message failed to send: ${err.message}`);
+      setErrorMessage(sanitizeErrorMessage(err, 'Unable to send message. Please try again.'));
     }
   };
 

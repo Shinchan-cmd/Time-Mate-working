@@ -65,15 +65,13 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({ onOpenAuth, onOpenMe
           setCompanions([]);
           setErrorMessage(null);
         } else {
-          console.warn('Profiles query error:', error.message);
           setCompanions([]);
         }
       } else {
         const parsed = (data || []).map(parseProfileRecord);
         setCompanions(parsed);
       }
-    } catch (err: any) {
-      console.warn('Companions fetch error:', err?.message);
+    } catch {
       setCompanions([]);
     } finally {
       setLoading(false);
@@ -257,7 +255,7 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({ onOpenAuth, onOpenMe
         <div className="flex flex-col items-center justify-center py-20">
           <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4" />
           <p className="text-xs text-gray-500 font-medium">
-            Fetching verified companion records from Supabase...
+            Discovering verified companions near you...
           </p>
         </div>
       ) : filteredCompanions.length === 0 ? (

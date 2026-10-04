@@ -1,33 +1,17 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { Booking, Conversation, Message, Profile, Review } from '../types';
+import { Profile } from '../types';
 
 // Default configuration specified in project guidelines
 const DEFAULT_SUPABASE_URL = 'https://nnuuiektlsouuswxxnod.supabase.co';
 const DEFAULT_SUPABASE_KEY = 'sb_publishable_nRtsqgxN_1JmR2jFYFPKdA_GL2uIEJx';
 
-// Active configuration with localStorage override for quick reconnect if project reference changed
-export function getActiveSupabaseConfig() {
-  const envUrl = import.meta.env.VITE_SUPABASE_URL;
-  const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-  const customUrl = typeof window !== 'undefined' ? localStorage.getItem('timemate_custom_supabase_url') : null;
-  const customKey = typeof window !== 'undefined' ? localStorage.getItem('timemate_custom_supabase_key') : null;
-
-  return {
-    url: customUrl || envUrl || DEFAULT_SUPABASE_URL,
-    key: customKey || envKey || DEFAULT_SUPABASE_KEY,
-    isCustom: !!(customUrl && customKey),
-  };
-}
-
 let clientInstance: SupabaseClient | null = null;
-let currentClientUrl = '';
-let currentClientKey = '';
 
 export function getSupabaseClient(): SupabaseClient {
-  const { url, key } = getActiveSupabaseConfig();
-  if (!clientInstance || currentClientUrl !== url || currentClientKey !== key) {
-    currentClientUrl = url;
-    currentClientKey = key;
+  const url = import.meta.env.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL;
+  const key = import.meta.env.VITE_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_KEY;
+
+  if (!clientInstance) {
     clientInstance = createClient(url, key, {
       auth: {
         persistSession: true,
@@ -40,79 +24,6 @@ export function getSupabaseClient(): SupabaseClient {
 }
 
 export const supabase = getSupabaseClient();
-
-export function setCustomSupabaseConfig(url: string, key: string) {
-  if (typeof window !== 'undefined') {
-    localStorage.setItem('timemate_custom_supabase_url', url.trim());
-    localStorage.setItem('timemate_custom_supabase_key', key.trim());
-    clientInstance = null; // force recreation
-    window.location.reload();
-  }
-}
-
-export function resetSupabaseConfig() {
-  if (typeof window !== 'undefined') {
-    localStorage.removeItem('timemate_custom_supabase_url');
-    localStorage.removeItem('timemate_custom_supabase_key');
-    clientInstance = null;
-    window.location.reload();
-  }
-}
-
-export interface BackendHealthStatus {
-  ok: boolean;
-  status: 'connected' | 'error' | 'project_removed' | 'offline';
-  message: string;
-  statusCode?: number;
-  url: string;
-}
-
-export async function checkSupabaseHealth(): Promise<BackendHealthStatus> {
-  const { url, key } = getActiveSupabaseConfig();
-  try {
-    const res = await fetch(`${url}/auth/v1/health`, {
-      headers: {
-        apikey: key,
-      },
-    });
-
-    if (res.status === 410) {
-      return {
-        ok: false,
-        status: 'project_removed',
-        statusCode: 410,
-        message: 'Supabase project returned HTTP 410: Project removed / paused.',
-        url,
-      };
-    }
-
-    if (!res.ok) {
-      const text = await res.text();
-      return {
-        ok: false,
-        status: 'error',
-        statusCode: res.status,
-        message: text || `HTTP ${res.status} error from Supabase`,
-        url,
-      };
-    }
-
-    return {
-      ok: true,
-      status: 'connected',
-      statusCode: res.status,
-      message: 'Connected to Supabase successfully',
-      url,
-    };
-  } catch (err: any) {
-    return {
-      ok: false,
-      status: 'offline',
-      message: err?.message || 'Network error connecting to Supabase backend',
-      url,
-    };
-  }
-}
 
 // Metadata helper for rich companion profile properties
 // Stores extra structured metadata inside the bio column safely as an envelope if needed

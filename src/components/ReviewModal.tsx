@@ -3,6 +3,7 @@ import { AlertCircle, CheckCircle2, Star, X } from 'lucide-react';
 import { Booking, Review } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { getSupabaseClient } from '../lib/supabase';
+import { sanitizeErrorMessage } from '../utils/security';
 
 interface ReviewModalProps {
   booking: Booking | null;
@@ -77,18 +78,14 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
         customer_name: user.email?.split('@')[0] || 'Customer',
       };
 
-      // Save to reviews table or local reviews storage
-      const { error } = await supabase.from('reviews').insert({
+      // Save to reviews table
+      await supabase.from('reviews').insert({
         booking_id: booking.id,
         customer_id: user.id,
         companion_id: booking.companion_id,
         rating,
         comment: comment.trim(),
       });
-
-      if (error) {
-        console.warn('Reviews table insert note:', error.message);
-      }
 
       setSuccess(true);
       onReviewSubmitted?.(newReview);
@@ -98,7 +95,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
         onClose();
       }, 1200);
     } catch (err: any) {
-      setErrorMessage(err.message || 'Failed to submit review.');
+      setErrorMessage(sanitizeErrorMessage(err, 'Unable to submit review. Please try again.'));
     } finally {
       setLoading(false);
     }

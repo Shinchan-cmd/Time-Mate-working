@@ -17,6 +17,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLocation } from '../context/LocationContext';
 import { useNotifications } from '../context/NotificationContext';
 import { getSupabaseClient } from '../lib/supabase';
+import { sanitizeErrorMessage } from '../utils/security';
 
 interface BookingModalProps {
   companion: Profile | null;
@@ -142,7 +143,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         onClose();
       }, 1200);
     } catch (err: any) {
-      setErrorMessage(err.message || 'Failed to submit booking to database.');
+      setErrorMessage(sanitizeErrorMessage(err, 'Unable to submit booking. Please try again.'));
     } finally {
       setLoading(false);
     }

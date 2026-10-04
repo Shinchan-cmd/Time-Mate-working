@@ -223,12 +223,12 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onSelectTab, onOpenA
             </nav>
 
             {/* Desktop Auth Controls */}
-            <div className="hidden md:flex items-center gap-3">
+            <div className="hidden md:flex items-center gap-2.5">
               {isAuthenticated ? (
                 <div className="relative">
                   <button
                     onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                    className="flex items-center gap-2.5 p-1.5 pl-3 rounded-full border border-gray-200 hover:border-gray-300 transition-colors focus:outline-hidden"
+                    className="flex items-center gap-2.5 p-1.5 pl-3.5 rounded-full border border-gray-200 hover:border-indigo-200 hover:bg-gray-50/80 transition-all focus:outline-hidden cursor-pointer shadow-2xs"
                   >
                     <div className="text-right">
                       <div className="text-xs font-bold text-gray-900 max-w-[120px] truncate">
@@ -238,19 +238,19 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onSelectTab, onOpenA
                         {profile?.role || 'Customer'}
                       </div>
                     </div>
-                    <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
                       {profile?.display_name?.slice(0, 1).toUpperCase() || 'U'}
                     </div>
                   </button>
 
                   {/* Profile Dropdown */}
                   {profileDropdownOpen && (
-                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-50">
-                      <div className="px-4 py-2 border-b border-gray-100">
-                        <div className="text-xs font-bold text-gray-900">
+                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-50 animate-in fade-in slide-in-from-top-1 duration-150">
+                      <div className="px-4 py-2.5 border-b border-gray-100 bg-gray-50/50 rounded-t-2xl">
+                        <div className="text-xs font-bold text-gray-900 truncate">
                           {profile?.display_name}
                         </div>
-                        <div className="text-[11px] text-gray-500 truncate">
+                        <div className="text-[11px] text-gray-500 truncate font-mono">
                           {user?.email}
                         </div>
                       </div>
@@ -260,7 +260,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onSelectTab, onOpenA
                           setProfileDropdownOpen(false);
                           onSelectTab('profile');
                         }}
-                        className="w-full px-4 py-2 text-left text-xs text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                        className="w-full px-4 py-2 text-left text-xs text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 flex items-center gap-2 transition-colors cursor-pointer"
                       >
                         <User className="w-4 h-4 text-gray-400" />
                         My Profile
@@ -272,7 +272,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onSelectTab, onOpenA
                             setProfileDropdownOpen(false);
                             onSelectTab('payment-settings');
                           }}
-                          className="w-full px-4 py-2 text-left text-xs text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                          className="w-full px-4 py-2 text-left text-xs text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 flex items-center gap-2 transition-colors cursor-pointer"
                         >
                           <CreditCard className="w-4 h-4 text-gray-400" />
                           Payment Settings
@@ -284,7 +284,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onSelectTab, onOpenA
                           setProfileDropdownOpen(false);
                           onSelectTab('bookings');
                         }}
-                        className="w-full px-4 py-2 text-left text-xs text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                        className="w-full px-4 py-2 text-left text-xs text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 flex items-center gap-2 transition-colors cursor-pointer"
                       >
                         <Calendar className="w-4 h-4 text-gray-400" />
                         Bookings History
@@ -294,7 +294,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onSelectTab, onOpenA
 
                       <button
                         onClick={handleLogout}
-                        className="w-full px-4 py-2 text-left text-xs text-red-600 hover:bg-red-50 flex items-center gap-2 font-medium"
+                        className="w-full px-4 py-2 text-left text-xs text-red-600 hover:bg-red-50 flex items-center gap-2 font-medium transition-colors cursor-pointer"
                       >
                         <LogOut className="w-4 h-4 text-red-500" />
                         Sign Out
@@ -306,19 +306,19 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onSelectTab, onOpenA
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => onOpenAuth('login')}
-                    className="px-4 py-2 text-sm font-semibold text-gray-700 hover:text-gray-900 rounded-xl hover:bg-gray-100 transition-colors"
+                    className="px-3.5 py-2 text-xs sm:text-sm font-bold text-gray-700 hover:text-indigo-600 rounded-xl hover:bg-gray-100/80 transition-all cursor-pointer"
                   >
                     Log In
                   </button>
                   <button
                     onClick={() => onOpenAuth('signup', 'companion')}
-                    className="px-4 py-2 text-sm font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-xl border border-indigo-200 transition-colors"
+                    className="px-3.5 py-2 text-xs sm:text-sm font-bold text-indigo-600 bg-indigo-50/80 hover:bg-indigo-100/80 active:bg-indigo-200/80 rounded-xl border border-indigo-200/80 transition-all cursor-pointer shadow-2xs"
                   >
                     Become a Companion
                   </button>
                   <button
                     onClick={() => onOpenAuth('signup', 'customer')}
-                    className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-md shadow-indigo-600/20 transition-colors"
+                    className="px-4 py-2 text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 active:opacity-90 rounded-xl shadow-md shadow-indigo-600/20 transition-all cursor-pointer"
                   >
                     Sign Up
                   </button>

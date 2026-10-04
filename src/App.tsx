@@ -3,7 +3,6 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { LocationProvider } from './context/LocationContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { Navbar } from './components/Navbar';
-import { SupabaseStatusBanner } from './components/SupabaseStatusBanner';
 import { AuthModal } from './components/AuthModal';
 import { LegalModal } from './components/LegalModal';
 import { DiscoverView } from './views/DiscoverView';
@@ -47,6 +46,11 @@ const MainApp: React.FC = () => {
       return;
     }
 
+    if (tab === 'admin' && profile?.role !== 'admin') {
+      setCurrentTab('discover');
+      return;
+    }
+
     setCurrentTab(tab);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -79,9 +83,6 @@ const MainApp: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50/60 flex flex-col text-gray-900 pb-16 md:pb-0">
-      {/* Real Supabase Backend Status Diagnostic Banner */}
-      <SupabaseStatusBanner />
-
       {/* Main Responsive Header Navigation */}
       <Navbar
         currentTab={currentTab}
@@ -119,7 +120,7 @@ const MainApp: React.FC = () => {
 
         {currentTab === 'payment-settings' && <ProfileView initialSubTab="payments" />}
 
-        {currentTab === 'admin' && <AdminDashboardView />}
+        {currentTab === 'admin' && profile?.role === 'admin' && <AdminDashboardView />}
       </main>
 
       {/* Production Footer */}

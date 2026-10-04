@@ -19,6 +19,7 @@ import { useAuth } from '../context/AuthContext';
 import { getSupabaseClient, parseProfileRecord } from '../lib/supabase';
 import { LiveTrackingModal } from '../components/LiveTrackingModal';
 import { ReviewModal } from '../components/ReviewModal';
+import { sanitizeErrorMessage } from '../utils/security';
 
 interface BookingsViewProps {
   onOpenMessageWithUserId?: (userId: string) => void;
@@ -61,7 +62,7 @@ export const BookingsView: React.FC<BookingsViewProps> = ({ onOpenMessageWithUse
           setBookings([]);
           setErrorMessage(null);
         } else {
-          setErrorMessage(error.message);
+          setErrorMessage(sanitizeErrorMessage(error, 'Unable to load bookings at this time.'));
           setBookings([]);
         }
       } else {
@@ -93,7 +94,7 @@ export const BookingsView: React.FC<BookingsViewProps> = ({ onOpenMessageWithUse
         setBookings(enrichedBookings);
       }
     } catch (err: any) {
-      setErrorMessage(err.message || 'Failed to load bookings.');
+      setErrorMessage(sanitizeErrorMessage(err, 'Unable to load bookings.'));
       setBookings([]);
     } finally {
       setLoading(false);
@@ -125,7 +126,7 @@ export const BookingsView: React.FC<BookingsViewProps> = ({ onOpenMessageWithUse
         .eq('id', bookingId);
 
       if (error) {
-        alert(`Failed to update booking: ${error.message}`);
+        setErrorMessage(sanitizeErrorMessage(error, 'Unable to update booking status. Please try again.'));
         return;
       }
 
@@ -134,7 +135,7 @@ export const BookingsView: React.FC<BookingsViewProps> = ({ onOpenMessageWithUse
         prev.map((b) => (b.id === bookingId ? { ...b, ...updates } : b))
       );
     } catch (err: any) {
-      alert(`Error updating booking: ${err.message}`);
+      setErrorMessage(sanitizeErrorMessage(err, 'Unable to update booking status. Please try again.'));
     }
   };
 

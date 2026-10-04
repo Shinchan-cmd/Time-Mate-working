@@ -94,7 +94,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({
             <div>
               <h3 className="text-sm font-bold text-gray-900 mb-2">Privacy &amp; Data Security</h3>
               <p>
-                TimeMate respects your personal data. User accounts and authentication credentials are secure and managed through industry-standard cryptographic sessions via Supabase.
+                TimeMate respects your personal data. User accounts and authentication credentials are secure and managed through industry-standard cryptographic sessions.
               </p>
               <h4 className="font-bold text-gray-900 mt-3 mb-1">Location Data Protection</h4>
               <p>
