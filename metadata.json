@@ -1,0 +1,10 @@
+{
+  "name": "Time Mate",
+  "description": "Location-aware companionship booking marketplace connecting customers with verified companions for scheduled activities, social events, and personal assistance.",
+  "requestFramePermissions": [
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
