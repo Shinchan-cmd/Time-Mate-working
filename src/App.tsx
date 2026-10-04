@@ -71,7 +71,7 @@ const MainApp: React.FC = () => {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-[#080808] flex flex-col items-center justify-center p-4">
+      <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center p-4">
         <TimeMateLogoIcon size={56} className="mb-4 shadow-[0_0_25px_rgba(255,45,141,0.5)] animate-pulse" />
         <div className="w-6 h-6 border-2 border-pink-500 border-t-transparent rounded-full animate-spin mb-2" />
         <p className="text-xs text-zinc-400 font-semibold uppercase tracking-wider">
@@ -82,7 +82,7 @@ const MainApp: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#080808] flex flex-col text-zinc-100 pb-16 md:pb-0 selection:bg-pink-500 selection:text-white">
+    <div className="min-h-screen bg-[#050505] flex flex-col text-zinc-100 pb-16 md:pb-0 selection:bg-pink-500 selection:text-white">
       {/* Main Responsive Header Navigation */}
       <Navbar
         currentTab={currentTab}

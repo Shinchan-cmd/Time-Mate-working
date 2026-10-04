@@ -212,10 +212,10 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
 
   // Render Leaflet/OpenStreetMap
   return (
-    <div className={`relative w-full rounded-2xl overflow-hidden border border-gray-200 ${className}`} style={{ height }}>
-      <div ref={mapContainerRef} className="w-full h-full z-0" />
+    <div className={`relative w-full rounded-2xl overflow-hidden border border-zinc-800 ${className}`} style={{ height }}>
+      <div ref={mapContainerRef} className="w-full h-full z-0 bg-[#050505]" />
       {interactive && (
-        <div className="absolute top-3 left-3 z-10 bg-white/90 backdrop-blur-xs px-3 py-1 rounded-lg shadow-sm border border-gray-200 text-xs font-medium text-gray-700 pointer-events-none">
+        <div className="absolute top-3 left-3 z-10 bg-zinc-900/90 backdrop-blur-xs px-3 py-1 rounded-lg shadow-sm border border-zinc-800 text-xs font-medium text-zinc-200 pointer-events-none">
           Click map to set meeting location
         </div>
       )}

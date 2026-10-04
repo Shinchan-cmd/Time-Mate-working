@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="dark" style="background-color: #050505; color: #ffffff;">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -9,10 +9,19 @@
     <meta property="og:description" content="Location-aware companionship booking marketplace connecting customers with verified companions for scheduled activities, social events, and personal assistance." />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="theme-color" content="#050505" />
+    <style>
+      html, body, #root {
+        background-color: #050505 !important;
+        color: #ffffff !important;
+        min-height: 100vh;
+        margin: 0;
+        padding: 0;
+      }
+    </style>
   </head>
-  <body>
-    <div id="root"></div>
+  <body style="background-color: #050505; color: #ffffff; margin: 0;">
+    <div id="root" style="background-color: #050505; min-height: 100vh;"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-
