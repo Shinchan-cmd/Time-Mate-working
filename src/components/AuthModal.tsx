@@ -1,5 +1,18 @@
 import React, { useState } from 'react';
-import { AlertCircle, ArrowLeft, CheckCircle2, Lock, Mail, Shield, User, Users, X } from 'lucide-react';
+import {
+  AlertCircle,
+  ArrowLeft,
+  CheckCircle2,
+  ExternalLink,
+  HelpCircle,
+  Lock,
+  Mail,
+  RefreshCw,
+  Shield,
+  User,
+  Users,
+  X,
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { UserRole } from '../types';
 import { TimeMateLogoIcon } from './TimeMateLogo';
@@ -19,7 +32,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   initialRole = 'customer',
   onSuccess,
 }) => {
-  const { signIn, signUp, resetPassword, emailConfirmationPending, clearEmailConfirmationNotice } = useAuth();
+  const {
+    signIn,
+    signUp,
+    resetPassword,
+    resendConfirmationEmail,
+    emailConfirmationPending,
+    clearEmailConfirmationNotice,
+  } = useAuth();
 
   const [mode, setMode] = useState<'login' | 'signup' | 'forgot'>('login');
   const [role, setRole] = useState<UserRole>(initialRole);
@@ -29,6 +49,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [unconfirmedEmail, setUnconfirmedEmail] = useState<string | null>(null);
+  const [resending, setResending] = useState(false);
+  const [resendSuccess, setResendSuccess] = useState(false);
 
   // Sync mode with props when opened
   React.useEffect(() => {
@@ -37,10 +60,33 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       setRole(initialRole);
       setErrorMessage(null);
       setSuccessMessage(null);
+      setUnconfirmedEmail(null);
+      setResendSuccess(false);
     }
   }, [isOpen, initialMode, initialRole]);
 
   if (!isOpen) return null;
+
+  const handleResendConfirmation = async () => {
+    const targetEmail = unconfirmedEmail || emailConfirmationPending || email.trim();
+    if (!targetEmail) return;
+
+    setResending(true);
+    setResendSuccess(false);
+    try {
+      const { error } = await resendConfirmationEmail(targetEmail);
+      if (error) {
+        setErrorMessage(error.message || 'Could not resend verification email.');
+      } else {
+        setResendSuccess(true);
+        setTimeout(() => setResendSuccess(false), 8000);
+      }
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Error resending confirmation.');
+    } finally {
+      setResending(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,7 +98,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       if (mode === 'login') {
         const { error } = await signIn(email, password);
         if (error) {
-          setErrorMessage(error.message || 'Login failed. Please verify credentials.');
+          if (error.message?.toLowerCase().includes('email not confirmed')) {
+            setUnconfirmedEmail(email.trim());
+            setErrorMessage(
+              'Your email address has not been confirmed yet. Click "Resend Verification Email" below or verify the account in Supabase.'
+            );
+          } else {
+            setErrorMessage(error.message || 'Login failed. Please verify credentials.');
+          }
         } else {
           setSuccessMessage('Logged in successfully!');
           setTimeout(() => {
@@ -71,8 +124,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         if (error) {
           setErrorMessage(error.message || 'Failed to create account.');
         } else if (confirmationRequired) {
+          setUnconfirmedEmail(email.trim());
           setSuccessMessage(
-            `Account created! Please check your email (${email}) and click the verification link to confirm your account.`
+            `Account created! A confirmation email was requested for ${email}.`
           );
         } else {
           setSuccessMessage('Account created and logged in successfully!');
@@ -136,19 +190,77 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </p>
         </div>
 
-        {/* Notice for pending email confirmation */}
-        {emailConfirmationPending && (
-          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900 flex items-start gap-2">
-            <Mail className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <span className="font-semibold">Confirmation link sent:</span> A verification link was sent to {emailConfirmationPending}. Please verify to sign in.
+        {/* Interactive Email Confirmation Assistant Card */}
+        {(emailConfirmationPending || unconfirmedEmail) && (
+          <div className="mb-5 p-3.5 bg-amber-50/90 border border-amber-200 rounded-2xl text-xs space-y-2.5">
+            <div className="flex items-start gap-2.5 text-amber-950">
+              <Mail className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <div className="font-bold text-amber-900">Email Verification Required</div>
+                <p className="text-[11px] text-amber-800 mt-0.5 leading-snug">
+                  Target address: <span className="font-semibold underline">{unconfirmedEmail || emailConfirmationPending}</span>
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  clearEmailConfirmationNotice();
+                  setUnconfirmedEmail(null);
+                }}
+                className="text-amber-400 hover:text-amber-700 p-1"
+                aria-label="Dismiss notice"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
-            <button
-              onClick={clearEmailConfirmationNotice}
-              className="text-blue-500 hover:text-blue-700"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
+
+            {/* Resend Action */}
+            <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-amber-200/70">
+              <button
+                type="button"
+                disabled={resending}
+                onClick={handleResendConfirmation}
+                className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 active:bg-amber-800 disabled:opacity-50 text-white font-bold rounded-lg text-[11px] flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+              >
+                <RefreshCw className={`w-3 h-3 ${resending ? 'animate-spin' : ''}`} />
+                {resending ? 'Sending Email...' : 'Resend Verification Email'}
+              </button>
+              {resendSuccess && (
+                <span className="text-[11px] font-semibold text-emerald-700 flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Sent! Check Spam/Junk
+                </span>
+              )}
+            </div>
+
+            {/* Troubleshooting Guide for Missing Emails */}
+            <div className="p-2.5 bg-white/90 rounded-xl border border-amber-200/80 text-[11px] text-gray-700 space-y-1.5">
+              <div className="font-bold flex items-center gap-1 text-amber-900">
+                <HelpCircle className="w-3.5 h-3.5 text-amber-600" />
+                Email not arriving? (Supabase Rate Limits)
+              </div>
+              <p className="text-[10px] text-gray-500 leading-normal">
+                Supabase default free mailer allows only 3 emails/hour and often gets delayed or sent to Spam.
+              </p>
+              <div className="pt-0.5 flex flex-wrap gap-2 text-[10px]">
+                <a
+                  href="https://supabase.com/dashboard/project/nnuuiektlsouuswxxnod/auth/providers"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-indigo-700 font-bold hover:underline"
+                >
+                  Turn OFF "Confirm email" <ExternalLink className="w-2.5 h-2.5" />
+                </a>
+                <span className="text-gray-300">&bull;</span>
+                <a
+                  href="https://supabase.com/dashboard/project/nnuuiektlsouuswxxnod/auth/users"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-indigo-700 font-bold hover:underline"
+                >
+                  Confirm User in Supabase <ExternalLink className="w-2.5 h-2.5" />
+                </a>
+              </div>
+            </div>
           </div>
         )}
 

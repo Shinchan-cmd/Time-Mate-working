@@ -22,6 +22,7 @@ interface AuthContextType {
   updateProfile: (updates: Partial<Profile>) => Promise<{ error: Error | null }>;
   refreshProfile: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: Error | null }>;
+  resendConfirmationEmail: (email: string) => Promise<{ error: Error | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -373,6 +374,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const resendConfirmationEmail = async (email: string): Promise<{ error: Error | null }> => {
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: email.trim(),
+        options: {
+          emailRedirectTo: window.location.origin,
+        },
+      });
+      return { error };
+    } catch (err: any) {
+      return { error: err };
+    }
+  };
+
   const clearEmailConfirmationNotice = () => {
     setEmailConfirmationPending(null);
   };
@@ -393,6 +409,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updateProfile,
         refreshProfile,
         resetPassword,
+        resendConfirmationEmail,
       }}
     >
       {children}
