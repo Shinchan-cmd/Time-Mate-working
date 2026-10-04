@@ -1,27 +1,89 @@
 import React from 'react';
 import {
   Bell,
+  BellRing,
   CheckCheck,
   Clock,
   MessageSquare,
   Shield,
   Trash2,
+  Volume2,
 } from 'lucide-react';
 import { useNotifications } from '../context/NotificationContext';
+import { soundService } from '../utils/sound';
 
 interface NotificationsViewProps {
   onNavigateTab?: (tab: string) => void;
 }
 
 export const NotificationsView: React.FC<NotificationsViewProps> = ({ onNavigateTab }) => {
-  const { notifications, unreadCount, markAsRead, markAllAsRead, clearAll } = useNotifications();
+  const {
+    notifications,
+    unreadCount,
+    permissionStatus,
+    requestPushPermission,
+    markAsRead,
+    markAllAsRead,
+    clearAll,
+  } = useNotifications();
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      <div className="flex items-center justify-between mb-6">
+      {/* Push Notification Access Banner */}
+      <div className="mb-6 p-4 rounded-3xl border border-indigo-100 bg-gradient-to-r from-indigo-50/80 via-purple-50/40 to-pink-50/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-xs shrink-0">
+            <BellRing className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="font-bold text-xs sm:text-sm text-gray-900 flex items-center gap-2">
+              <span>Push Notifications &amp; Sound Alerts</span>
+              <span
+                className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${
+                  permissionStatus === 'granted'
+                    ? 'bg-emerald-100 text-emerald-800'
+                    : permissionStatus === 'denied'
+                    ? 'bg-red-100 text-red-800'
+                    : 'bg-indigo-100 text-indigo-800'
+                }`}
+              >
+                {permissionStatus === 'granted'
+                  ? 'Active & Enabled'
+                  : permissionStatus === 'denied'
+                  ? 'Blocked'
+                  : 'Disabled'}
+              </span>
+            </div>
+            <p className="text-[11px] text-gray-500 mt-0.5">
+              Get notified immediately on new messages and bookings even when TimeMate is in another tab.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          {permissionStatus !== 'granted' ? (
+            <button
+              onClick={requestPushPermission}
+              className="w-full sm:w-auto px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
+            >
+              Allow Notifications
+            </button>
+          ) : (
+            <button
+              onClick={() => soundService.playBookingChime()}
+              className="w-full sm:w-auto px-3.5 py-1.5 bg-white hover:bg-gray-100 border border-gray-300 text-gray-700 font-bold text-xs rounded-xl transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+            >
+              <Volume2 className="w-3.5 h-3.5 text-indigo-600" />
+              <span>Test Sound</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            Notifications &amp; Activity
+            Activity Feed
             {unreadCount > 0 && (
               <span className="text-xs bg-red-500 text-white font-bold px-2 py-0.5 rounded-full">
                 {unreadCount} unread
@@ -37,14 +99,14 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({ onNavigate
           <div className="flex items-center gap-2">
             <button
               onClick={markAllAsRead}
-              className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-xl transition-colors flex items-center gap-1.5"
+              className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer"
             >
               <CheckCheck className="w-3.5 h-3.5 text-indigo-600" />
-              Mark All Read
+              <span>Mark All Read</span>
             </button>
             <button
               onClick={clearAll}
-              className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+              className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
               title="Clear all"
             >
               <Trash2 className="w-4 h-4" />

@@ -28,11 +28,12 @@ interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({ currentTab, onSelectTab, onOpenAuth }) => {
   const { user, profile, isAuthenticated, signOut } = useAuth();
   const { location, setManualLocation, requestCurrentLocation, permissionState, loading: locationLoading } = useLocation();
-  const { unreadCount } = useNotifications();
+  const { unreadCount, permissionStatus, requestPushPermission, activeToast, dismissToast } = useNotifications();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [locationPickerOpen, setLocationPickerOpen] = useState(false);
+  const [hidePromptBanner, setHidePromptBanner] = useState(false);
 
   const handleLogout = async () => {
     setProfileDropdownOpen(false);
@@ -228,7 +229,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onSelectTab, onOpenA
                 <div className="relative">
                   <button
                     onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                    className="flex items-center gap-2.5 p-1.5 pl-3.5 rounded-full border border-gray-200 hover:border-indigo-200 hover:bg-gray-50/80 transition-all focus:outline-hidden cursor-pointer shadow-2xs"
+                    className="flex items-center gap-2.5 p-1 pl-3.5 rounded-full border border-gray-200 hover:border-indigo-200 hover:bg-gray-50/80 transition-all focus:outline-hidden cursor-pointer shadow-2xs"
                   >
                     <div className="text-right">
                       <div className="text-xs font-bold text-gray-900 max-w-[120px] truncate">
@@ -238,9 +239,17 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onSelectTab, onOpenA
                         {profile?.role || 'Customer'}
                       </div>
                     </div>
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
-                      {profile?.display_name?.slice(0, 1).toUpperCase() || 'U'}
-                    </div>
+                    {profile?.avatar_url ? (
+                      <img
+                        src={profile.avatar_url}
+                        alt="Avatar"
+                        className="w-8 h-8 rounded-full object-cover ring-1 ring-indigo-200"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
+                        {profile?.display_name?.slice(0, 1).toUpperCase() || 'U'}
+                      </div>
+                    )}
                   </button>
 
                   {/* Profile Dropdown */}
@@ -512,6 +521,76 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onSelectTab, onOpenA
           </div>
         )}
       </header>
+
+      {/* Floating In-App Live Notification Toast */}
+      {activeToast && (
+        <div className="fixed top-20 right-4 z-50 max-w-sm w-full bg-white rounded-2xl shadow-2xl border border-indigo-100 p-3.5 animate-in slide-in-from-top-4 fade-in duration-200">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+              {activeToast.type === 'message' ? (
+                <MessageSquare className="w-5 h-5" />
+              ) : (
+                <Bell className="w-5 h-5" />
+              )}
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-xs text-gray-900 truncate">
+                  {activeToast.title}
+                </span>
+                <button
+                  onClick={dismissToast}
+                  className="text-gray-400 hover:text-gray-600 text-xs p-1"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <p className="text-[11px] text-gray-600 mt-0.5 line-clamp-2">
+                {activeToast.message}
+              </p>
+              {activeToast.link && (
+                <button
+                  onClick={() => {
+                    onSelectTab(activeToast.link!);
+                    dismissToast();
+                  }}
+                  className="text-[11px] text-indigo-600 hover:text-indigo-800 font-bold mt-1.5 inline-flex items-center gap-1 cursor-pointer"
+                >
+                  View Details &rarr;
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notification Permission Request Banner */}
+      {isAuthenticated && permissionStatus === 'default' && !hidePromptBanner && (
+        <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white px-4 py-2 text-xs flex items-center justify-between shadow-xs">
+          <div className="flex items-center gap-2 max-w-2xl">
+            <Bell className="w-4 h-4 animate-bounce shrink-0" />
+            <span>
+              <strong>Never miss a message!</strong> Enable browser push notifications to get instant sound &amp; live alerts on booking requests and chats.
+            </span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0 ml-3">
+            <button
+              onClick={requestPushPermission}
+              className="px-3 py-1 bg-white text-indigo-700 font-bold rounded-lg hover:bg-gray-100 transition-colors cursor-pointer text-[11px] shadow-xs"
+            >
+              Turn On
+            </button>
+            <button
+              onClick={() => setHidePromptBanner(true)}
+              className="text-white/80 hover:text-white p-1 cursor-pointer"
+              aria-label="Dismiss banner"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Mobile Fixed Bottom Navigation Bar */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-gray-200 px-2 py-1.5 flex items-center justify-around">

@@ -7,6 +7,7 @@ import { getAuthRedirectUrl, handleIncomingAuthRedirect } from '../utils/authRed
 export interface SignupMetadata {
   displayName: string;
   role: UserRole;
+  avatarUrl?: string;
   city?: string;
   services?: string[];
   languages?: string[];
@@ -20,12 +21,13 @@ interface AuthContextType {
   profile: Profile | null;
   loading: boolean;
   isAuthenticated: boolean;
-  sendOtp: (email: string, isSignUp: boolean, signupData?: SignupMetadata) => Promise<{ error: Error | null }>;
-  verifyOtp: (
+  signIn: (email: string, password: string) => Promise<{ error: Error | null; user: User | null }>;
+  signUp: (
     email: string,
-    token: string,
-    signupData?: SignupMetadata
+    password: string,
+    signupData: SignupMetadata
   ) => Promise<{ error: Error | null; user: User | null }>;
+  resetPassword: (email: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<{ error: Error | null }>;
   refreshProfile: () => Promise<void>;
@@ -49,10 +51,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .select('*')
           .eq('user_id', supabaseUser.id)
           .maybeSingle();
-
-        if (error) {
-          // If query failed (e.g. table not initialized yet), proceed to fallback profile
-        }
 
         if (data) {
           return parseProfileRecord(data);
@@ -88,6 +86,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               })
             : 'TimeMate member';
 
+        const initialAvatarUrl = signupData?.avatarUrl || meta.avatar_url || null;
+
         const { data: created, error: insertError } = await supabase
           .from('profiles')
           .insert({
@@ -95,26 +95,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             email: supabaseUser.email,
             display_name: chosenDisplayName,
             role: chosenRole,
+            avatar_url: initialAvatarUrl,
             bio: initialBio,
           })
           .select()
           .single();
 
-        if (insertError) {
-          // Return a structured Profile object linked to the authentic user.id
-          return {
-            id: supabaseUser.id,
-            user_id: supabaseUser.id,
-            email: supabaseUser.email || '',
-            display_name: chosenDisplayName,
-            role: chosenRole,
-            bio: initialBio,
-            is_available: true,
-            hourly_rate: signupData?.hourlyRate ?? 600,
-          };
+        if (created) {
+          return parseProfileRecord(created);
         }
 
-        return parseProfileRecord(created);
+        // Fallback profile object linked to the authentic user.id
+        return {
+          id: supabaseUser.id,
+          user_id: supabaseUser.id,
+          email: supabaseUser.email || '',
+          display_name: chosenDisplayName,
+          role: chosenRole,
+          avatar_url: initialAvatarUrl || undefined,
+          bio: initialBio,
+          is_available: true,
+          hourly_rate: signupData?.hourlyRate ?? 600,
+        };
       } catch {
         return null;
       }
@@ -195,58 +197,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [supabase, fetchProfileForUser]);
 
   /**
-   * Real Supabase Passwordless OTP Generation
-   * Sends a 6-digit numeric OTP to the specified email address
+   * Real Supabase Email + Password Sign In
    */
-  const sendOtp = async (
+  const signIn = async (
     email: string,
-    isSignUp: boolean,
-    signupData?: SignupMetadata
-  ): Promise<{ error: Error | null }> => {
-    try {
-      const cleanEmail = email.trim().toLowerCase();
-      const { error } = await supabase.auth.signInWithOtp({
-        email: cleanEmail,
-        options: {
-          shouldCreateUser: isSignUp,
-          emailRedirectTo: getAuthRedirectUrl('/auth/callback'),
-          data:
-            isSignUp && signupData
-              ? {
-                  display_name: signupData.displayName.trim(),
-                  role: signupData.role,
-                }
-              : undefined,
-        },
-      });
-
-      if (error) {
-        return { error };
-      }
-
-      return { error: null };
-    } catch (err: any) {
-      return { error: err };
-    }
-  };
-
-  /**
-   * Real Supabase OTP Verification
-   * Verifies the 6-digit numeric OTP and establishes an authenticated Supabase session
-   */
-  const verifyOtp = async (
-    email: string,
-    token: string,
-    signupData?: SignupMetadata
+    password: string
   ): Promise<{ error: Error | null; user: User | null }> => {
     try {
       const cleanEmail = email.trim().toLowerCase();
-      const cleanToken = token.trim();
-
-      const { data, error } = await supabase.auth.verifyOtp({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: cleanEmail,
-        token: cleanToken,
-        type: 'email',
+        password,
       });
 
       if (error) {
@@ -256,29 +217,88 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (data.session && data.user) {
         setSession(data.session);
         setUser(data.user);
-        const prof = await fetchProfileForUser(data.user, signupData);
+        const prof = await fetchProfileForUser(data.user);
         setProfile(prof);
         return { error: null, user: data.user };
       }
 
-      // Edge-case fallback: obtain current user if session object was delayed
-      const {
-        data: { user: currentUser },
-      } = await supabase.auth.getUser();
-
-      if (currentUser) {
-        setUser(currentUser);
-        const prof = await fetchProfileForUser(currentUser, signupData);
-        setProfile(prof);
-        return { error: null, user: currentUser };
-      }
-
-      return {
-        error: new Error('Verification succeeded but session could not be established.'),
-        user: null,
-      };
+      return { error: null, user: data.user };
     } catch (err: any) {
       return { error: err, user: null };
+    }
+  };
+
+  /**
+   * Real Supabase Email + Password Sign Up
+   */
+  const signUp = async (
+    email: string,
+    password: string,
+    signupData: SignupMetadata
+  ): Promise<{ error: Error | null; user: User | null }> => {
+    try {
+      const cleanEmail = email.trim().toLowerCase();
+      const { data, error } = await supabase.auth.signUp({
+        email: cleanEmail,
+        password,
+        options: {
+          data: {
+            display_name: signupData.displayName.trim(),
+            role: signupData.role,
+          },
+        },
+      });
+
+      if (error) {
+        return { error, user: null };
+      }
+
+      if (data.user) {
+        if (data.session) {
+          setSession(data.session);
+          setUser(data.user);
+          const prof = await fetchProfileForUser(data.user, signupData);
+          setProfile(prof);
+        } else {
+          // If session was not immediately returned (e.g. Supabase default behavior), sign in directly
+          const { data: loginData } = await supabase.auth.signInWithPassword({
+            email: cleanEmail,
+            password,
+          });
+          if (loginData?.session && loginData?.user) {
+            setSession(loginData.session);
+            setUser(loginData.user);
+            const prof = await fetchProfileForUser(loginData.user, signupData);
+            setProfile(prof);
+          }
+        }
+        return { error: null, user: data.user };
+      }
+
+      return { error: new Error('Unable to complete account registration.'), user: null };
+    } catch (err: any) {
+      return { error: err, user: null };
+    }
+  };
+
+  /**
+   * Real Supabase Password Reset Request
+   */
+  const resetPassword = async (email: string): Promise<{ error: Error | null }> => {
+    try {
+      const cleanEmail = email.trim().toLowerCase();
+      const redirectUrl = getAuthRedirectUrl('/auth/callback');
+      const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
+        redirectTo: redirectUrl,
+      });
+
+      if (error) {
+        return { error };
+      }
+
+      return { error: null };
+    } catch (err: any) {
+      return { error: err };
     }
   };
 
@@ -366,8 +386,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         profile,
         loading,
         isAuthenticated: !!user && !!session,
-        sendOtp,
-        verifyOtp,
+        signIn,
+        signUp,
+        resetPassword,
         signOut,
         updateProfile,
         refreshProfile,

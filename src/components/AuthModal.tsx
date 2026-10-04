@@ -3,17 +3,25 @@ import {
   AlertCircle,
   ArrowLeft,
   Banknote,
+  Camera,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
   CreditCard,
+  Eye,
+  EyeOff,
   HeartHandshake,
+  Image as ImageIcon,
+  KeyRound,
+  Lock,
   Mail,
   MapPin,
   QrCode,
   RefreshCw,
   ShieldCheck,
   Sparkles,
+  Trash2,
+  Upload,
   User,
   Users,
   X,
@@ -21,12 +29,13 @@ import {
 import { useAuth, SignupMetadata } from '../context/AuthContext';
 import { UserRole, CompanionPaymentSettings } from '../types';
 import { TimeMateLogoIcon } from './TimeMateLogo';
-import { maskEmail, sanitizeErrorMessage, isRateLimitError } from '../utils/security';
+import { sanitizeErrorMessage } from '../utils/security';
+import { AVATAR_PRESETS, compressAndCropImage } from '../utils/avatarPresets';
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  initialMode?: 'login' | 'signup';
+  initialMode?: 'login' | 'signup' | 'forgot_password';
   initialRole?: UserRole;
   onSuccess?: () => void;
 }
@@ -38,18 +47,28 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   initialRole = 'customer',
   onSuccess,
 }) => {
-  const { sendOtp, verifyOtp } = useAuth();
+  const { signIn, signUp, resetPassword } = useAuth();
 
-  // Mode & step states
-  const [mode, setMode] = useState<'login' | 'signup'>(initialMode);
-  const [step, setStep] = useState<'details' | 'otp'>('details');
+  // Mode state: 'login' | 'signup' | 'forgot_password'
+  const [mode, setMode] = useState<'login' | 'signup' | 'forgot_password'>(initialMode);
 
   // Form input states
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   const [role, setRole] = useState<UserRole>(initialRole);
   const [displayName, setDisplayName] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string>('');
   const [city, setCity] = useState('');
   const [hourlyRate, setHourlyRate] = useState<number>(600);
+
+  // Avatar presets and upload states
+  const [showPresetsModal, setShowPresetsModal] = useState<boolean>(false);
+  const [avatarUploading, setAvatarUploading] = useState<boolean>(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Optional Companion Payment Details
   const [showPaymentSetup, setShowPaymentSetup] = useState<boolean>(false);
@@ -58,63 +77,32 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [accountNumber, setAccountNumber] = useState<string>('');
   const [ifscCode, setIfscCode] = useState<string>('');
 
-  // OTP 6-digit state
-  const [otpDigits, setOtpDigits] = useState<string[]>(['', '', '', '', '', '']);
-  const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  // In-flight guard
+  const isSubmittingRef = useRef<boolean>(false);
 
-  // In-flight operation guards to strictly prevent duplicate parallel requests
-  const isSendingOtpRef = useRef<boolean>(false);
-  const isVerifyingRef = useRef<boolean>(false);
-
-  // Async & feedback states
+  // Async feedback states
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // Cooldown countdown for resending OTP
-  const [cooldown, setCooldown] = useState<number>(0);
-  const [resending, setResending] = useState(false);
-
-  // Sync mode & reset states whenever modal opens or initialMode changes
+  // Reset states when modal opens
   useEffect(() => {
     if (isOpen) {
       setMode(initialMode);
       setRole(initialRole);
-      setStep('details');
-      setOtpDigits(['', '', '', '', '', '']);
+      setPassword('');
+      setConfirmPassword('');
+      setAvatarUrl('');
+      setShowPresetsModal(false);
+      setShowPassword(false);
+      setShowConfirmPassword(false);
       setErrorMessage(null);
       setSuccessMessage(null);
       setLoading(false);
-      setResending(false);
       setShowPaymentSetup(false);
-      isSendingOtpRef.current = false;
-      isVerifyingRef.current = false;
+      isSubmittingRef.current = false;
     }
   }, [isOpen, initialMode, initialRole]);
-
-  // Clean cooldown interval timer
-  useEffect(() => {
-    if (cooldown <= 0) return;
-    const interval = setInterval(() => {
-      setCooldown((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [cooldown]);
-
-  // Focus first OTP input when switching to OTP step
-  useEffect(() => {
-    if (step === 'otp') {
-      setTimeout(() => {
-        otpInputRefs.current[0]?.focus();
-      }, 100);
-    }
-  }, [step]);
 
   if (!isOpen) return null;
 
@@ -133,88 +121,32 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   };
 
   /**
-   * Single Canonical Send Verification Handler with Strict In-Flight Locking
+   * Handle Photo File Upload with client-side compression
    */
-  const handleSendOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-    // Guard against duplicate / rapid concurrent invocations
-    if (isSendingOtpRef.current || loading) return;
-
-    if (cooldown > 0) {
-      setErrorMessage(`Please wait ${cooldown} seconds before requesting another code.`);
-      return;
-    }
-
-    const cleanEmail = email.trim().toLowerCase();
-    if (!cleanEmail || !cleanEmail.includes('@')) {
-      setErrorMessage('Please enter a valid email address.');
-      return;
-    }
-
-    if (mode === 'signup' && !displayName.trim()) {
-      setErrorMessage('Please enter your full name or display name.');
-      return;
-    }
-
-    // Lock submission
-    isSendingOtpRef.current = true;
-    setLoading(true);
+    setAvatarUploading(true);
     setErrorMessage(null);
-    setSuccessMessage(null);
-
-    const signupMetadata: SignupMetadata | undefined =
-      mode === 'signup'
-        ? {
-            displayName: displayName.trim(),
-            role,
-            city: city.trim() || undefined,
-            hourlyRate: role === 'companion' ? hourlyRate : undefined,
-            paymentSettings: buildCompanionPaymentSettings(),
-          }
-        : undefined;
 
     try {
-      const { error } = await sendOtp(cleanEmail, mode === 'signup', signupMetadata);
-
-      if (error) {
-        if (isRateLimitError(error)) {
-          setCooldown(60);
-          setErrorMessage('Too many code requests. Please wait before requesting another code.');
-        } else {
-          setErrorMessage(
-            sanitizeErrorMessage(
-              error,
-              mode === 'login'
-                ? 'No account was found for this email. Please switch to Create Account.'
-                : 'Unable to send confirmation email. Please try again.'
-            )
-          );
-        }
-      } else {
-        setStep('otp');
-        setOtpDigits(['', '', '', '', '', '']);
-        setCooldown(60);
-        setSuccessMessage(`Confirmation email sent to ${maskEmail(cleanEmail)}.`);
-      }
-    } catch (err) {
-      if (isRateLimitError(err)) {
-        setCooldown(60);
-        setErrorMessage('Too many code requests. Please wait before requesting another code.');
-      } else {
-        setErrorMessage(sanitizeErrorMessage(err, 'Unable to send confirmation email. Please try again.'));
-      }
+      const dataUrl = await compressAndCropImage(file, 320, 0.85);
+      setAvatarUrl(dataUrl);
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'Failed to process image file.');
     } finally {
-      setLoading(false);
-      isSendingOtpRef.current = false;
+      setAvatarUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
   /**
-   * Resend Handler with Synchronous Locking and Rate-Limit Detection
+   * Handle Email + Password Login
    */
-  const handleResendOtp = async () => {
-    if (isSendingOtpRef.current || resending || cooldown > 0) return;
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isSubmittingRef.current || loading) return;
 
     const cleanEmail = email.trim().toLowerCase();
     if (!cleanEmail || !cleanEmail.includes('@')) {
@@ -222,166 +154,152 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       return;
     }
 
-    isSendingOtpRef.current = true;
-    setResending(true);
-    setErrorMessage(null);
+    if (!password) {
+      setErrorMessage('Please enter your password.');
+      return;
+    }
 
-    const signupMetadata: SignupMetadata | undefined =
-      mode === 'signup'
-        ? {
-            displayName: displayName.trim(),
-            role,
-            city: city.trim() || undefined,
-            hourlyRate: role === 'companion' ? hourlyRate : undefined,
-            paymentSettings: buildCompanionPaymentSettings(),
-          }
-        : undefined;
+    isSubmittingRef.current = true;
+    setLoading(true);
+    setErrorMessage(null);
+    setSuccessMessage(null);
 
     try {
-      const { error } = await sendOtp(cleanEmail, mode === 'signup', signupMetadata);
+      const { error, user } = await signIn(cleanEmail, password);
 
-      if (error) {
-        if (isRateLimitError(error)) {
-          setCooldown(60);
-          setErrorMessage('Too many code requests. Please wait before requesting another code.');
-        } else {
-          setErrorMessage(
-            sanitizeErrorMessage(
-              error,
-              'Too many verification requests. Please wait a moment before trying again.'
-            )
-          );
-        }
-      } else {
-        setCooldown(60);
-        setSuccessMessage(`A fresh confirmation email was sent to ${maskEmail(cleanEmail)}.`);
-        setTimeout(() => setSuccessMessage(null), 5000);
-      }
-    } catch (err) {
-      if (isRateLimitError(err)) {
-        setCooldown(60);
-        setErrorMessage('Too many code requests. Please wait before requesting another code.');
-      } else {
+      if (error || !user) {
         setErrorMessage(
-          sanitizeErrorMessage(
-            err,
-            'Too many verification requests. Please wait a moment before trying again.'
-          )
+          sanitizeErrorMessage(error, 'Email or password is incorrect.')
         );
+      } else {
+        setSuccessMessage('Signed in successfully!');
+        setTimeout(() => {
+          onSuccess?.();
+          onClose();
+        }, 400);
       }
+    } catch (err: any) {
+      setErrorMessage(sanitizeErrorMessage(err, 'Unable to sign in. Please try again.'));
     } finally {
-      setResending(false);
-      isSendingOtpRef.current = false;
+      setLoading(false);
+      isSubmittingRef.current = false;
     }
   };
 
-  const handleOtpChange = (index: number, val: string) => {
-    const digitsOnly = val.replace(/\D/g, '');
-
-    // Handle full 6-digit paste
-    if (digitsOnly.length > 1) {
-      const splitDigits = digitsOnly.slice(0, 6).split('');
-      const newDigits = [...otpDigits];
-      splitDigits.forEach((d, i) => {
-        newDigits[i] = d;
-      });
-      setOtpDigits(newDigits);
-
-      const nextIndex = Math.min(splitDigits.length, 5);
-      otpInputRefs.current[nextIndex]?.focus();
-
-      if (splitDigits.length === 6) {
-        triggerVerify(newDigits.join(''));
-      }
-      return;
-    }
-
-    const singleDigit = digitsOnly.slice(-1);
-    const updated = [...otpDigits];
-    updated[index] = singleDigit;
-    setOtpDigits(updated);
-
-    if (singleDigit && index < 5) {
-      otpInputRefs.current[index + 1]?.focus();
-    }
-
-    if (updated.every((d) => d !== '')) {
-      triggerVerify(updated.join(''));
-    }
-  };
-
-  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
-      otpInputRefs.current[index - 1]?.focus();
-    }
-  };
-
-  const triggerVerify = async (fullToken: string) => {
-    if (isVerifyingRef.current || loading) return;
-
-    if (fullToken.length !== 6) {
-      setErrorMessage('Please enter the full 6-digit verification code.');
-      return;
-    }
-
-    isVerifyingRef.current = true;
-    setErrorMessage(null);
-    setLoading(true);
+  /**
+   * Handle Email + Password Signup
+   */
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isSubmittingRef.current || loading) return;
 
     const cleanEmail = email.trim().toLowerCase();
-    const signupMetadata: SignupMetadata | undefined =
-      mode === 'signup'
-        ? {
-            displayName: displayName.trim(),
-            role,
-            city: city.trim() || undefined,
-            hourlyRate: role === 'companion' ? hourlyRate : undefined,
-            paymentSettings: buildCompanionPaymentSettings(),
-          }
-        : undefined;
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      setErrorMessage('Please enter a valid email address.');
+      return;
+    }
+
+    if (!displayName.trim()) {
+      setErrorMessage('Please enter your full name or display name.');
+      return;
+    }
+
+    if (!password || password.length < 6) {
+      setErrorMessage('Password must be at least 6 characters.');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setErrorMessage('Passwords do not match. Please re-enter.');
+      return;
+    }
+
+    isSubmittingRef.current = true;
+    setLoading(true);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    const signupMetadata: SignupMetadata = {
+      displayName: displayName.trim(),
+      role,
+      avatarUrl: avatarUrl.trim() || undefined,
+      city: city.trim() || undefined,
+      hourlyRate: role === 'companion' ? hourlyRate : undefined,
+      paymentSettings: buildCompanionPaymentSettings(),
+    };
 
     try {
-      const { error, user } = await verifyOtp(cleanEmail, fullToken, signupMetadata);
+      const { error, user } = await signUp(cleanEmail, password, signupMetadata);
 
       if (error || !user) {
         setErrorMessage(
           sanitizeErrorMessage(
             error,
-            'That verification code is incorrect or has expired. Please try again.'
+            'Unable to create your account. Please check your details and try again.'
           )
         );
       } else {
-        setSuccessMessage('Successfully verified! Redirecting...');
+        setSuccessMessage('Account created successfully!');
         setTimeout(() => {
           onSuccess?.();
           onClose();
-        }, 600);
+        }, 500);
       }
-    } catch (err) {
+    } catch (err: any) {
       setErrorMessage(
         sanitizeErrorMessage(
           err,
-          'That verification code is incorrect or has expired. Please try again.'
+          'Unable to create your account. Please check your details and try again.'
         )
       );
     } finally {
       setLoading(false);
-      isVerifyingRef.current = false;
+      isSubmittingRef.current = false;
     }
   };
 
-  const handleVerifySubmit = (e: React.FormEvent) => {
+  /**
+   * Handle Password Reset Request
+   */
+  const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    triggerVerify(otpDigits.join(''));
-  };
+    if (isSubmittingRef.current || loading) return;
 
-  const handleChangeEmail = () => {
-    setStep('details');
-    setOtpDigits(['', '', '', '', '', '']);
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      setErrorMessage('Please enter a valid email address.');
+      return;
+    }
+
+    isSubmittingRef.current = true;
+    setLoading(true);
     setErrorMessage(null);
     setSuccessMessage(null);
-    isSendingOtpRef.current = false;
-    isVerifyingRef.current = false;
+
+    try {
+      const { error } = await resetPassword(cleanEmail);
+
+      if (error) {
+        setErrorMessage(
+          sanitizeErrorMessage(
+            error,
+            'Unable to process password reset request. Please try again.'
+          )
+        );
+      } else {
+        setSuccessMessage('Password recovery instructions sent to your email address.');
+      }
+    } catch (err: any) {
+      setErrorMessage(
+        sanitizeErrorMessage(
+          err,
+          'Unable to process password reset request. Please try again.'
+        )
+      );
+    } finally {
+      setLoading(false);
+      isSubmittingRef.current = false;
+    }
   };
 
   return (
@@ -389,26 +307,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       <div className="relative bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 md:p-8 shadow-2xl border border-gray-100 my-auto max-h-[94vh] overflow-y-auto">
         {/* Top Header Bar */}
         <div className="flex items-center justify-between pb-3 mb-4 border-b border-gray-100">
-          {step === 'otp' ? (
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleChangeEmail}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-800 font-bold text-xs transition-colors cursor-pointer shadow-xs"
-                aria-label="Change email address"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Change Email</span>
-              </button>
-              <div className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200/80">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Confirmation email sent</span>
-              </div>
-            </div>
+          {mode === 'forgot_password' ? (
+            <button
+              type="button"
+              onClick={() => {
+                setMode('login');
+                setErrorMessage(null);
+                setSuccessMessage(null);
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-800 font-bold text-xs transition-colors cursor-pointer shadow-xs"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Back to Sign In</span>
+            </button>
           ) : (
             <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-500">
               <Sparkles className="w-4 h-4 text-indigo-600" />
-              <span>Secure Email Verification</span>
+              <span>TimeMate Authentication</span>
             </div>
           )}
 
@@ -423,31 +338,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         </div>
 
         {/* Brand Logo & Header */}
-        <div className="text-center mb-6">
+        <div className="text-center mb-5">
           <div className="flex justify-center mb-3">
             <TimeMateLogoIcon size={52} className="shadow-lg" />
           </div>
           <h2 className="text-2xl font-bold text-gray-900 tracking-tight">
-            {step === 'otp'
-              ? 'Confirmation email sent'
-              : mode === 'login'
+            {mode === 'login'
               ? 'Sign in to Time Mate'
-              : 'Create your Time Mate account'}
+              : mode === 'signup'
+              ? 'Create your Time Mate account'
+              : 'Reset your password'}
           </h2>
-          <p className="text-xs text-gray-500 mt-1.5 max-w-xs mx-auto leading-relaxed">
-            {step === 'otp' ? (
-              <>
-                We sent a secure verification code to{' '}
-                <span className="font-semibold text-gray-800 font-mono">
-                  {maskEmail(email)}
-                </span>
-                . Enter the 6-digit code below to continue.
-              </>
-            ) : mode === 'login' ? (
-              'Enter your email to receive a secure one-time verification code.'
-            ) : (
-              'Join the location-aware companionship marketplace with zero platform fees.'
-            )}
+          <p className="text-xs text-gray-500 mt-1 max-w-xs mx-auto leading-relaxed">
+            {mode === 'login'
+              ? 'Enter your email and password to access your account.'
+              : mode === 'signup'
+              ? 'Join the location-aware companionship marketplace with zero platform fees.'
+              : 'Enter your account email to receive secure password recovery instructions.'}
           </p>
         </div>
 
@@ -466,107 +373,46 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </div>
         )}
 
-        {/* STEP 1: Details & Email Entry */}
-        {step === 'details' && (
-          <form onSubmit={handleSendOtp} className="space-y-4">
-            {/* Mode Switcher Tabs */}
-            <div className="flex bg-gray-100 p-1 rounded-2xl">
-              <button
-                type="button"
-                onClick={() => {
-                  setMode('login');
-                  setErrorMessage(null);
-                  setSuccessMessage(null);
-                  isSendingOtpRef.current = false;
-                }}
-                className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
-                  mode === 'login'
-                    ? 'bg-white text-indigo-700 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                Sign In
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setMode('signup');
-                  setErrorMessage(null);
-                  setSuccessMessage(null);
-                  isSendingOtpRef.current = false;
-                }}
-                className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
-                  mode === 'signup'
-                    ? 'bg-white text-indigo-700 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                Create Account
-              </button>
-            </div>
+        {/* Mode Switcher (Sign In vs Create Account) */}
+        {mode !== 'forgot_password' && (
+          <div className="flex bg-gray-100 p-1 rounded-2xl mb-4">
+            <button
+              type="button"
+              onClick={() => {
+                setMode('login');
+                setErrorMessage(null);
+                setSuccessMessage(null);
+              }}
+              className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+                mode === 'login'
+                  ? 'bg-white text-indigo-700 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Sign In
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMode('signup');
+                setErrorMessage(null);
+                setSuccessMessage(null);
+              }}
+              className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+                mode === 'signup'
+                  ? 'bg-white text-indigo-700 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Create Account
+            </button>
+          </div>
+        )}
 
-            {/* Account Type Selection (Only for SignUp) */}
-            {mode === 'signup' && (
-              <div className="space-y-2">
-                <label className="block text-xs font-bold text-gray-700">I want to join as</label>
-                <div className="grid grid-cols-2 gap-2.5">
-                  <button
-                    type="button"
-                    onClick={() => setRole('customer')}
-                    className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
-                      role === 'customer'
-                        ? 'border-indigo-600 bg-indigo-50/70 text-indigo-950 shadow-xs ring-1 ring-indigo-500/30'
-                        : 'border-gray-200 bg-white hover:bg-gray-50 text-gray-700'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <User className="w-4 h-4 text-indigo-600" />
-                      <span className="font-bold text-xs">Customer</span>
-                    </div>
-                    <p className="text-[10px] text-gray-500 leading-snug">
-                      Book verified companions near you
-                    </p>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setRole('companion')}
-                    className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
-                      role === 'companion'
-                        ? 'border-indigo-600 bg-indigo-50/70 text-indigo-950 shadow-xs ring-1 ring-indigo-500/30'
-                        : 'border-gray-200 bg-white hover:bg-gray-50 text-gray-700'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <HeartHandshake className="w-4 h-4 text-pink-600" />
-                      <span className="font-bold text-xs">Companion</span>
-                    </div>
-                    <p className="text-[10px] text-gray-500 leading-snug">
-                      Offer companionship &amp; earn directly
-                    </p>
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Name Input (SignUp only) */}
-            {mode === 'signup' && (
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">
-                  Full Name / Display Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Maya Sharma"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 text-xs sm:text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
-                />
-              </div>
-            )}
-
-            {/* Email Address */}
+        {/* 1. SIGN IN FORM */}
+        {mode === 'login' && (
+          <form onSubmit={handleLogin} className="space-y-4">
+            {/* Email */}
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1">
                 Email Address <span className="text-red-500">*</span>
@@ -584,8 +430,310 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </div>
             </div>
 
+            {/* Password */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-bold text-gray-700">
+                  Password <span className="text-red-500">*</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('forgot_password');
+                    setErrorMessage(null);
+                    setSuccessMessage(null);
+                  }}
+                  className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 transition-colors cursor-pointer"
+                >
+                  Forgot password?
+                </button>
+              </div>
+              <div className="relative">
+                <Lock className="absolute left-3.5 top-3 w-4 h-4 text-gray-400" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full pl-10 pr-10 py-2.5 text-xs sm:text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-hidden font-mono"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 cursor-pointer"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 active:opacity-90 disabled:opacity-50 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer mt-2"
+            >
+              {loading ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span>Signing In...</span>
+                </>
+              ) : (
+                <span>Sign In</span>
+              )}
+            </button>
+
+            <div className="text-center pt-2">
+              <span className="text-xs text-gray-500">Don't have an account? </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('signup');
+                  setErrorMessage(null);
+                  setSuccessMessage(null);
+                }}
+                className="text-xs font-bold text-indigo-600 hover:text-indigo-800 cursor-pointer"
+              >
+                Create Account
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* 2. CREATE ACCOUNT FORM (FOR BOTH CUSTOMER & COMPANION) */}
+        {mode === 'signup' && (
+          <form onSubmit={handleSignup} className="space-y-4">
+            {/* Account Type Selection */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-gray-700">I want to join as</label>
+              <div className="grid grid-cols-2 gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setRole('customer')}
+                  className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
+                    role === 'customer'
+                      ? 'border-indigo-600 bg-indigo-50/70 text-indigo-950 shadow-xs ring-1 ring-indigo-500/30'
+                      : 'border-gray-200 bg-white hover:bg-gray-50 text-gray-700'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <User className="w-4 h-4 text-indigo-600" />
+                    <span className="font-bold text-xs">Customer</span>
+                  </div>
+                  <p className="text-[10px] text-gray-500 leading-snug">
+                    Book verified companions near you
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setRole('companion')}
+                  className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
+                    role === 'companion'
+                      ? 'border-indigo-600 bg-indigo-50/70 text-indigo-950 shadow-xs ring-1 ring-indigo-500/30'
+                      : 'border-gray-200 bg-white hover:bg-gray-50 text-gray-700'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <HeartHandshake className="w-4 h-4 text-pink-600" />
+                    <span className="font-bold text-xs">Companion</span>
+                  </div>
+                  <p className="text-[10px] text-gray-500 leading-snug">
+                    Offer companionship &amp; earn directly
+                  </p>
+                </button>
+              </div>
+            </div>
+
+            {/* Profile Picture / Avatar Addition Section (For BOTH Customer & Companion) */}
+            <div className="p-3 bg-gray-50 rounded-2xl border border-gray-200 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+                  <Camera className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>Profile Picture</span>
+                  <span className="text-[10px] text-gray-400 font-normal">(Optional)</span>
+                </label>
+                {avatarUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setAvatarUrl('')}
+                    className="text-[10px] font-semibold text-red-600 hover:underline flex items-center gap-0.5 cursor-pointer"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    Remove
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3">
+                {/* Avatar Preview */}
+                <div className="relative shrink-0">
+                  {avatarUrl ? (
+                    <img
+                      src={avatarUrl}
+                      alt="Avatar Preview"
+                      className="w-12 h-12 rounded-2xl object-cover ring-2 ring-indigo-500 shadow-xs"
+                    />
+                  ) : (
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-500 text-white flex items-center justify-center font-bold text-base shadow-xs">
+                      {displayName?.slice(0, 1).toUpperCase() || (role === 'companion' ? 'C' : 'U')}
+                    </div>
+                  )}
+                </div>
+
+                {/* Upload & Preset Action Buttons */}
+                <div className="flex-1 flex flex-wrap gap-1.5">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+
+                  <button
+                    type="button"
+                    disabled={avatarUploading}
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-2.5 py-1.5 bg-white hover:bg-gray-100 border border-gray-300 text-gray-700 rounded-xl text-[11px] font-bold transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                  >
+                    <Upload className="w-3 h-3 text-indigo-600" />
+                    <span>{avatarUploading ? 'Uploading...' : 'Upload Photo'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowPresetsModal(!showPresetsModal)}
+                    className="px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-[11px] font-bold transition-colors flex items-center gap-1 cursor-pointer"
+                  >
+                    <ImageIcon className="w-3 h-3 text-indigo-600" />
+                    <span>Choose Avatar</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Collapsible Avatar Preset Grid */}
+              {showPresetsModal && (
+                <div className="pt-2 border-t border-gray-200/80 animate-in fade-in duration-150">
+                  <p className="text-[10px] font-bold text-gray-500 mb-1.5">Click to choose a preset portrait:</p>
+                  <div className="grid grid-cols-6 gap-1.5">
+                    {AVATAR_PRESETS.slice(0, 6).map((preset) => (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        onClick={() => {
+                          setAvatarUrl(preset.url);
+                          setShowPresetsModal(false);
+                        }}
+                        className={`rounded-xl overflow-hidden aspect-square border-2 transition-all cursor-pointer ${
+                          avatarUrl === preset.url
+                            ? 'border-indigo-600 scale-105 ring-2 ring-indigo-500/40'
+                            : 'border-transparent hover:border-indigo-300'
+                        }`}
+                      >
+                        <img
+                          src={preset.url}
+                          alt={preset.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Name */}
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">
+                Full Name / Display Name <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. Maya Sharma"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                className="w-full px-3.5 py-2.5 text-xs sm:text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
+              />
+            </div>
+
+            {/* Email */}
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">
+                Email Address <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <Mail className="absolute left-3.5 top-3 w-4 h-4 text-gray-400" />
+                <input
+                  type="email"
+                  required
+                  placeholder="yourname@gmail.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full pl-10 pr-3.5 py-2.5 text-xs sm:text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
+                />
+              </div>
+            </div>
+
+            {/* Password */}
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">
+                Password <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-3.5 top-3 w-4 h-4 text-gray-400" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  minLength={6}
+                  placeholder="At least 6 characters"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full pl-10 pr-10 py-2.5 text-xs sm:text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-hidden font-mono"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 cursor-pointer"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Confirm Password */}
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">
+                Confirm Password <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-3.5 top-3 w-4 h-4 text-gray-400" />
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  required
+                  minLength={6}
+                  placeholder="Re-enter your password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full pl-10 pr-10 py-2.5 text-xs sm:text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-hidden font-mono"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 cursor-pointer"
+                  aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
             {/* Companion specific profile helpers */}
-            {mode === 'signup' && role === 'companion' && (
+            {role === 'companion' && (
               <>
                 <div className="grid grid-cols-2 gap-2.5 pt-1">
                   <div>
@@ -722,110 +870,73 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </>
             )}
 
-            {/* Submit Send Verification Code Button */}
+            {/* Submit Create Account Button */}
             <button
               type="submit"
-              disabled={loading || cooldown > 0}
+              disabled={loading}
               className="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 active:opacity-90 disabled:opacity-50 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer mt-2"
             >
               {loading ? (
                 <>
                   <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span>Sending Confirmation Email...</span>
+                  <span>Creating Account...</span>
                 </>
-              ) : cooldown > 0 ? (
-                <span>Request available in {cooldown}s</span>
               ) : (
-                <>
-                  <Mail className="w-4 h-4" />
-                  <span>Send Confirmation Code</span>
-                </>
+                <span>Create Account</span>
               )}
             </button>
+
+            <div className="text-center pt-2">
+              <span className="text-xs text-gray-500">Already have an account? </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('login');
+                  setErrorMessage(null);
+                  setSuccessMessage(null);
+                }}
+                className="text-xs font-bold text-indigo-600 hover:text-indigo-800 cursor-pointer"
+              >
+                Sign In
+              </button>
+            </div>
           </form>
         )}
 
-        {/* STEP 2: 6-Digit Code Verification Screen */}
-        {step === 'otp' && (
-          <form onSubmit={handleVerifySubmit} className="space-y-5">
-            <div className="space-y-2">
-              <label className="block text-xs font-bold text-gray-700 text-center">
-                Enter the 6-digit code sent to your email
+        {/* 3. FORGOT PASSWORD FORM */}
+        {mode === 'forgot_password' && (
+          <form onSubmit={handleForgotPassword} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">
+                Your Account Email Address <span className="text-red-500">*</span>
               </label>
-
-              {/* 6 Individual Numeric Boxes */}
-              <div className="flex items-center justify-center gap-2 sm:gap-2.5 py-2">
-                {otpDigits.map((digit, idx) => (
-                  <input
-                    key={idx}
-                    ref={(el) => {
-                      otpInputRefs.current[idx] = el;
-                    }}
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    maxLength={1}
-                    value={digit}
-                    onChange={(e) => handleOtpChange(idx, e.target.value)}
-                    onKeyDown={(e) => handleOtpKeyDown(idx, e)}
-                    className={`w-11 h-13 sm:w-12 sm:h-14 text-center text-xl sm:text-2xl font-bold font-mono rounded-2xl border transition-all focus:outline-hidden ${
-                      digit
-                        ? 'border-indigo-600 bg-indigo-50/50 text-indigo-950 ring-2 ring-indigo-500/30'
-                        : 'border-gray-300 bg-gray-50 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20'
-                    }`}
-                    aria-label={`Digit ${idx + 1}`}
-                  />
-                ))}
+              <div className="relative">
+                <Mail className="absolute left-3.5 top-3 w-4 h-4 text-gray-400" />
+                <input
+                  type="email"
+                  required
+                  placeholder="yourname@gmail.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full pl-10 pr-3.5 py-2.5 text-xs sm:text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
+                />
               </div>
             </div>
 
-            {/* Verify Code Button */}
             <button
               type="submit"
-              disabled={loading || otpDigits.some((d) => !d)}
-              className="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 active:opacity-90 disabled:opacity-40 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+              disabled={loading}
+              className="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 active:opacity-90 disabled:opacity-50 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer mt-2"
             >
               {loading ? (
                 <>
                   <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span>Verifying Code...</span>
+                  <span>Sending Instructions...</span>
                 </>
               ) : (
-                <>
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Verify Code &amp; Continue</span>
-                </>
+                <span>Send Password Reset Link</span>
               )}
             </button>
-
-            {/* Resend & Change Email Actions */}
-            <div className="pt-2 border-t border-gray-100 flex flex-col items-center gap-2 text-xs">
-              <div className="flex items-center gap-1.5 text-gray-500">
-                <span>Didn't receive a code?</span>
-                {cooldown > 0 ? (
-                  <span className="font-semibold text-gray-700">
-                    Resend in {cooldown}s
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    disabled={resending}
-                    onClick={handleResendOtp}
-                    className="font-bold text-indigo-600 hover:text-indigo-800 disabled:opacity-50 transition-colors cursor-pointer"
-                  >
-                    {resending ? 'Sending...' : 'Resend Code'}
-                  </button>
-                )}
-              </div>
-
-              <button
-                type="button"
-                onClick={handleChangeEmail}
-                className="text-[11px] text-gray-500 hover:text-gray-800 underline transition-colors cursor-pointer"
-              >
-                Entered incorrect email? Change email
-              </button>
-            </div>
           </form>
         )}
       </div>

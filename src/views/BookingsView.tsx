@@ -235,9 +235,17 @@ export const BookingsView: React.FC<BookingsViewProps> = ({ onOpenMessageWithUse
               >
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-gray-100">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow-xs">
-                      {partner?.display_name?.slice(0, 2).toUpperCase() || 'TM'}
-                    </div>
+                    {partner?.avatar_url ? (
+                      <img
+                        src={partner.avatar_url}
+                        alt="Avatar"
+                        className="w-12 h-12 rounded-xl object-cover ring-1 ring-gray-200 shadow-xs"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 text-white flex items-center justify-center font-bold text-sm shadow-xs">
+                        {partner?.display_name?.slice(0, 2).toUpperCase() || 'TM'}
+                      </div>
+                    )}
 
                     <div>
                       <div className="flex items-center gap-2">
