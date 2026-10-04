@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, Shield, X } from 'lucide-react';
+import { ArrowLeft, Mail, Shield, X } from 'lucide-react';
 
 interface LegalModalProps {
   isOpen: boolean;
@@ -17,14 +17,29 @@ export const LegalModal: React.FC<LegalModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
-      <div className="relative bg-white rounded-2xl max-w-2xl w-full p-6 md:p-8 shadow-2xl border border-gray-100 my-8 max-h-[85vh] flex flex-col">
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 p-2 rounded-full hover:bg-gray-100"
-        >
-          <X className="w-5 h-5" />
-        </button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-2 sm:p-4 overflow-y-auto">
+      <div className="relative bg-white rounded-2xl max-w-2xl w-full p-4 sm:p-6 md:p-8 shadow-2xl border border-gray-100 my-auto max-h-[90vh] flex flex-col">
+        {/* Sticky Mobile & Desktop Top Bar with Back and Close */}
+        <div className="flex items-center justify-between pb-3 mb-3 border-b border-gray-100">
+          <button
+            onClick={onClose}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-800 font-bold text-xs transition-colors cursor-pointer shadow-xs"
+            aria-label="Go back"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Back</span>
+          </button>
+
+          <span className="text-xs font-semibold text-gray-500">Legal &amp; Safety</span>
+
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 hover:text-gray-900 transition-colors shadow-xs cursor-pointer"
+            aria-label="Close legal modal"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
 
         <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
           <button

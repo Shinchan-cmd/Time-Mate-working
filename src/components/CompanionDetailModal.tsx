@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  ArrowLeft,
   Banknote,
   Calendar,
   CheckCircle2,
@@ -43,19 +44,36 @@ export const CompanionDetailModal: React.FC<CompanionDetailModalProps> = ({
   const cashEnabled = companion.payment_settings?.cash_enabled ?? true;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
-      <div className="relative bg-white rounded-2xl max-w-2xl w-full p-6 md:p-8 shadow-2xl border border-gray-100 my-8 max-h-[90vh] overflow-y-auto">
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 p-2 rounded-full hover:bg-gray-100 transition-colors"
-          aria-label="Close details"
-        >
-          <X className="w-5 h-5" />
-        </button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-2 sm:p-4 overflow-y-auto">
+      <div className="relative bg-white rounded-2xl max-w-2xl w-full shadow-2xl border border-gray-100 my-auto max-h-[92vh] flex flex-col overflow-hidden">
+        {/* Sticky Mobile & Desktop Top Bar with Back and Close */}
+        <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-md px-4 sm:px-6 py-3 border-b border-gray-100 flex items-center justify-between">
+          <button
+            onClick={onClose}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-800 font-bold text-xs transition-colors cursor-pointer shadow-xs"
+            aria-label="Go back"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Back</span>
+          </button>
 
-        {/* Top Header */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 pb-6 border-b border-gray-100">
+          <span className="text-xs font-semibold text-gray-500 truncate max-w-[160px] sm:max-w-none">
+            {companion.display_name}
+          </span>
+
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 hover:text-gray-900 transition-colors shadow-xs cursor-pointer"
+            aria-label="Close details"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Scrollable Modal Content */}
+        <div className="overflow-y-auto flex-1 p-4 sm:p-6 md:p-8 space-y-6">
+          {/* Top Header */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 pb-6 border-b border-gray-100">
           <div className="relative shrink-0">
             <div className="w-20 h-20 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-bold text-2xl shadow-lg overflow-hidden">
               {companion.avatar_url ? (
@@ -193,23 +211,34 @@ export const CompanionDetailModal: React.FC<CompanionDetailModalProps> = ({
             </div>
           ) : null}
         </div>
+      </div>
 
-        {/* Footer Actions */}
-        <div className="pt-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-end gap-3">
+      {/* Footer Actions */}
+        <div className="p-4 sm:px-6 bg-gray-50 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3">
           <button
-            onClick={() => onMessage(companion)}
-            className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+            onClick={onClose}
+            className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-100 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
           >
-            <MessageSquare className="w-4 h-4 text-indigo-600" />
-            Send Message
+            <ArrowLeft className="w-3.5 h-3.5" />
+            Back to Directory
           </button>
-          <button
-            onClick={() => onBook(companion)}
-            className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-600/20 flex items-center justify-center gap-2 transition-colors cursor-pointer"
-          >
-            <Calendar className="w-4 h-4" />
-            Book {companion.display_name}
-          </button>
+
+          <div className="w-full sm:w-auto flex flex-col sm:flex-row items-center gap-2.5">
+            <button
+              onClick={() => onMessage(companion)}
+              className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+            >
+              <MessageSquare className="w-4 h-4 text-indigo-600" />
+              Send Message
+            </button>
+            <button
+              onClick={() => onBook(companion)}
+              className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-600/20 flex items-center justify-center gap-2 transition-colors cursor-pointer"
+            >
+              <Calendar className="w-4 h-4" />
+              Book {companion.display_name}
+            </button>
+          </div>
         </div>
       </div>
     </div>

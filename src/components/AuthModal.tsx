@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AlertCircle, CheckCircle2, Lock, Mail, Shield, User, Users, X } from 'lucide-react';
+import { AlertCircle, ArrowLeft, CheckCircle2, Lock, Mail, Shield, User, Users, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { UserRole } from '../types';
 import { TimeMateLogoIcon } from './TimeMateLogo';
@@ -97,16 +97,27 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
-      <div className="relative bg-white rounded-2xl max-w-md w-full p-6 md:p-8 shadow-2xl border border-gray-100 my-8">
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 p-2 rounded-full hover:bg-gray-100 transition-colors"
-          aria-label="Close authentication dialog"
-        >
-          <X className="w-5 h-5" />
-        </button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-2 sm:p-4 overflow-y-auto">
+      <div className="relative bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 md:p-8 shadow-2xl border border-gray-100 my-auto max-h-[92vh] overflow-y-auto">
+        {/* Mobile & Desktop Top Bar with Back & Close */}
+        <div className="flex items-center justify-between pb-2 mb-4 border-b border-gray-100">
+          <button
+            onClick={onClose}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-800 font-bold text-xs transition-colors cursor-pointer shadow-xs"
+            aria-label="Go back"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Back</span>
+          </button>
+
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 hover:text-gray-900 transition-colors shadow-xs cursor-pointer"
+            aria-label="Close authentication dialog"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
 
         {/* Brand Header */}
         <div className="text-center mb-6">

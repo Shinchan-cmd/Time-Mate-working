@@ -338,9 +338,11 @@ export const MessagesView: React.FC<MessagesViewProps> = ({ initialTargetUserId 
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => setActiveConversation(null)}
-                    className="p-1.5 md:hidden text-gray-500 hover:bg-gray-100 rounded-lg"
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 md:hidden bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-800 font-bold text-xs rounded-full shadow-xs cursor-pointer"
+                    aria-label="Back to conversations list"
                   >
-                    <ArrowLeft className="w-5 h-5" />
+                    <ArrowLeft className="w-4 h-4" />
+                    <span>Back</span>
                   </button>
                   <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
                     {activeConversation.other_participant?.display_name?.slice(0, 2).toUpperCase() || 'TM'}

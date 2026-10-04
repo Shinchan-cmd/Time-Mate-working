@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   AlertCircle,
+  ArrowLeft,
   CheckCircle,
   Copy,
   Check,
@@ -256,9 +257,11 @@ export const SupabaseStatusBanner: React.FC = () => {
               </div>
               <button
                 onClick={() => setShowSqlModal(false)}
-                className="text-gray-400 hover:text-gray-600"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 hover:text-gray-900 font-semibold text-xs transition-colors shadow-xs"
+                aria-label="Close SQL setup modal"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
+                <span className="sm:hidden">Close</span>
               </button>
             </div>
 
@@ -328,9 +331,11 @@ export const SupabaseStatusBanner: React.FC = () => {
               </div>
               <button
                 onClick={() => setShowConfigModal(false)}
-                className="text-gray-400 hover:text-gray-600 p-1 rounded-lg"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 hover:text-gray-900 font-semibold text-xs transition-colors shadow-xs"
+                aria-label="Close credentials modal"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
+                <span className="sm:hidden">Close</span>
               </button>
             </div>
 

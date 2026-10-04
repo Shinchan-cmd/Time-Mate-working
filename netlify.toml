@@ -1,0 +1,30 @@
+# Netlify Configuration for TimeMate SPA
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+  VITE_SUPABASE_URL = "https://nnuuiektlsouuswxxnod.supabase.co"
+  VITE_SUPABASE_ANON_KEY = "sb_publishable_nRtsqgxN_1JmR2jFYFPKdA_GL2uIEJx"
+
+# Single Page Application SPA Redirects
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Security and Performance Headers
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    X-XSS-Protection = "1; mode=block"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

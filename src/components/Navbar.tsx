@@ -81,18 +81,26 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onSelectTab, onOpenA
 
                 {/* Location Picker Popup */}
                 {locationPickerOpen && (
-                  <div className="absolute left-0 mt-2 w-72 bg-white rounded-2xl shadow-xl border border-gray-200 p-4 z-50">
-                    <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-100">
-                      <span className="text-xs font-bold text-gray-900 uppercase tracking-wider">
-                        Choose Location
-                      </span>
-                      <button
-                        onClick={() => setLocationPickerOpen(false)}
-                        className="text-gray-400 hover:text-gray-600"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
+                  <>
+                    {/* Mobile Backdrop */}
+                    <div
+                      className="fixed inset-0 z-40 bg-black/20 sm:hidden"
+                      onClick={() => setLocationPickerOpen(false)}
+                    />
+
+                    <div className="fixed inset-x-3 top-16 sm:absolute sm:inset-x-auto sm:left-0 sm:top-full sm:mt-2 w-auto sm:w-72 max-w-md sm:max-w-none bg-white rounded-2xl shadow-2xl border border-gray-200 p-4 z-50">
+                      <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-100">
+                        <span className="text-xs font-bold text-gray-900 uppercase tracking-wider">
+                          Choose Location
+                        </span>
+                        <button
+                          onClick={() => setLocationPickerOpen(false)}
+                          className="p-1 rounded-full hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
+                          aria-label="Close location picker"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
 
                     <button
                       onClick={async () => {
@@ -137,7 +145,8 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onSelectTab, onOpenA
                       ))}
                     </div>
                   </div>
-                )}
+                </>
+              )}
               </div>
             </div>
 
