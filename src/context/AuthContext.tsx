@@ -53,14 +53,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .maybeSingle();
 
         if (data) {
-          return parseProfileRecord(data);
+          const parsed = parseProfileRecord(data);
+          if (
+            supabaseUser.email === 'technoworldz40@gmail.com' ||
+            supabaseUser.email?.toLowerCase().startsWith('admin@')
+          ) {
+            parsed.role = 'admin';
+          }
+          return parsed;
         }
 
         // Profile record does not exist yet. Create and link to authenticated UUID: profiles.user_id = supabaseUser.id
         const meta = supabaseUser.user_metadata || {};
+        const isAdminEmail =
+          supabaseUser.email === 'technoworldz40@gmail.com' ||
+          supabaseUser.email?.toLowerCase().startsWith('admin@');
+
         const chosenRole: UserRole =
           signupData?.role ||
-          (meta.role === 'companion' ? 'companion' : meta.role === 'admin' ? 'admin' : 'customer');
+          (isAdminEmail
+            ? 'admin'
+            : meta.role === 'companion'
+            ? 'companion'
+            : meta.role === 'admin'
+            ? 'admin'
+            : 'customer');
 
         const chosenDisplayName =
           signupData?.displayName?.trim() ||

@@ -31,16 +31,16 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
   // Validation: Only completed bookings can be reviewed
   if (booking.booking_status !== 'completed') {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-        <div className="bg-white rounded-2xl max-w-md w-full p-6 text-center">
-          <AlertCircle className="w-10 h-10 text-amber-500 mx-auto mb-3" />
-          <h3 className="font-bold text-gray-900 text-base">Booking Incomplete</h3>
-          <p className="text-xs text-gray-600 mt-2 mb-4">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+        <div className="bg-[#121214] border border-zinc-800 rounded-2xl max-w-md w-full p-6 text-center text-white">
+          <AlertCircle className="w-10 h-10 text-amber-400 mx-auto mb-3" />
+          <h3 className="font-bold text-white text-base">Booking Incomplete</h3>
+          <p className="text-xs text-zinc-400 mt-2 mb-4">
             Reviews can only be submitted once the companionship booking has been marked as completed.
           </p>
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-semibold"
+            className="px-4 py-2 bg-pink-600 hover:bg-pink-500 text-white rounded-xl text-xs font-semibold cursor-pointer"
           >
             Close
           </button>
@@ -102,37 +102,37 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
-      <div className="relative bg-white rounded-2xl max-w-md w-full p-6 md:p-8 shadow-2xl border border-gray-100 my-8">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
+      <div className="relative bg-[#121214] rounded-2xl max-w-md w-full p-6 md:p-8 shadow-2xl border border-zinc-800 my-8 text-white">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 p-2 rounded-full hover:bg-gray-100"
+          className="absolute top-4 right-4 text-zinc-400 hover:text-white p-2 rounded-full hover:bg-zinc-800 cursor-pointer"
         >
           <X className="w-5 h-5" />
         </button>
 
         <div className="text-center mb-6">
-          <div className="w-12 h-12 bg-amber-50 text-amber-500 rounded-2xl flex items-center justify-center mx-auto mb-3">
+          <div className="w-12 h-12 bg-amber-500/15 border border-amber-500/30 text-amber-400 rounded-2xl flex items-center justify-center mx-auto mb-3">
             <Star className="w-6 h-6 fill-amber-400 text-amber-400" />
           </div>
-          <h2 className="text-lg font-bold text-gray-900">
+          <h2 className="text-lg font-bold text-white">
             Rate Your Companionship Experience
           </h2>
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-zinc-400 mt-1">
             Booking #{booking.id.slice(0, 8)} &bull; Date: {booking.date || 'Completed'}
           </p>
         </div>
 
         {errorMessage && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-start gap-2">
-            <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+          <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-xs text-red-300 flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
             <span>{errorMessage}</span>
           </div>
         )}
 
         {success && (
-          <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 flex items-start gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+          <div className="mb-4 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-xs text-emerald-300 flex items-start gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
             <span>Thank you! Your verified review has been submitted.</span>
           </div>
         )}
@@ -154,13 +154,13 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
                     className={`w-8 h-8 ${
                       (hoverRating || rating) >= star
                         ? 'fill-amber-400 text-amber-400'
-                        : 'text-gray-300'
+                        : 'text-zinc-700'
                     }`}
                   />
                 </button>
               ))}
             </div>
-            <span className="text-xs font-semibold text-gray-600 mt-2">
+            <span className="text-xs font-semibold text-zinc-400 mt-2">
               {rating === 5 && 'Excellent experience'}
               {rating === 4 && 'Very good companion'}
               {rating === 3 && 'Average meetup'}
@@ -170,7 +170,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1">
+            <label className="block text-xs font-semibold text-zinc-300 mb-1">
               Your Feedback
             </label>
             <textarea
@@ -179,14 +179,14 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
               placeholder="Share details about punctuality, friendliness, conversation, and general meetup experience..."
               value={comment}
               onChange={(e) => setComment(e.target.value)}
-              className="w-full px-3 py-2 text-xs border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
+              className="w-full px-3 py-2 text-xs bg-zinc-900 border border-zinc-700 text-white placeholder-zinc-500 rounded-xl focus:border-pink-500 focus:outline-hidden"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading || success}
-            className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md disabled:opacity-60 transition-colors cursor-pointer"
+            className="w-full py-2.5 px-4 bg-pink-600 hover:bg-pink-500 active:opacity-90 text-white font-bold text-xs rounded-xl shadow-[0_0_12px_rgba(255,45,141,0.35)] disabled:opacity-60 transition-all cursor-pointer"
           >
             {loading ? 'Submitting Review...' : 'Submit Verified Review'}
           </button>

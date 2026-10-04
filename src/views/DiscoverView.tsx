@@ -3,11 +3,11 @@ import {
   AlertCircle,
   Clock,
   Filter,
-  Map,
   MapPin,
   RefreshCw,
   Search,
   SlidersHorizontal,
+  Sparkles,
   Users,
 } from 'lucide-react';
 import { Profile, UserRole } from '../types';
@@ -15,7 +15,6 @@ import { getSupabaseClient, parseProfileRecord } from '../lib/supabase';
 import { CompanionCard } from '../components/CompanionCard';
 import { CompanionDetailModal } from '../components/CompanionDetailModal';
 import { BookingModal } from '../components/BookingModal';
-import { InteractiveMap } from '../components/InteractiveMap';
 import { useLocation, POPULAR_LOCATIONS } from '../context/LocationContext';
 import { useAuth } from '../context/AuthContext';
 
@@ -37,7 +36,6 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({ onOpenAuth, onOpenMe
   const [selectedCity, setSelectedCity] = useState<string>('all');
   const [maxPrice, setMaxPrice] = useState<number>(3000);
   const [onlyAvailable, setOnlyAvailable] = useState<boolean>(false);
-  const [viewMode, setViewMode] = useState<'grid' | 'map'>('grid');
 
   // Modals
   const [selectedCompanion, setSelectedCompanion] = useState<Profile | null>(null);
@@ -55,7 +53,6 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({ onOpenAuth, onOpenMe
         .eq('role', 'companion');
 
       if (error) {
-        // If table is not yet created in Supabase SQL editor or schema is empty, treat gracefully as empty catalog
         if (
           error.message?.includes('schema cache') ||
           error.message?.includes('does not exist') ||
@@ -138,42 +135,46 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({ onOpenAuth, onOpenMe
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      {/* Hero Banner */}
-      <div className="bg-gradient-to-r from-indigo-900 via-indigo-800 to-indigo-950 rounded-3xl p-6 sm:p-10 text-white shadow-xl mb-8 relative overflow-hidden">
+      {/* Hero Banner with Neon Pink Glow */}
+      <div className="bg-gradient-to-br from-[#1c0818] via-[#100c14] to-[#080808] border border-pink-500/25 rounded-3xl p-6 sm:p-10 text-white shadow-[0_0_30px_rgba(255,45,141,0.15)] mb-8 relative overflow-hidden">
+        {/* Subtle decorative glow orb */}
+        <div className="absolute top-0 right-0 w-80 h-80 bg-pink-500/10 rounded-full blur-3xl pointer-events-none" />
+
         <div className="relative z-10 max-w-2xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-200 border border-indigo-400/30 text-xs font-semibold mb-3">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-pink-500/15 text-pink-300 border border-pink-500/30 text-xs font-semibold mb-3 shadow-[0_0_10px_rgba(255,45,141,0.2)]">
+            <Sparkles className="w-3.5 h-3.5 text-pink-400" />
             <span>₹0 Platform Fee on All Bookings</span>
           </div>
-          <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight">
+          <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-white">
             Discover Verified Companions
           </h1>
-          <p className="text-indigo-200 text-xs sm:text-sm mt-2 leading-relaxed">
+          <p className="text-zinc-300 text-xs sm:text-sm mt-2 leading-relaxed">
             Connect with verified companions for scheduled events, social dinners, city guidance, and friendly company. Filter by location, availability, and transparent hourly rates.
           </p>
         </div>
       </div>
 
       {/* Search & Filter Controls */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-xs mb-8 space-y-4">
+      <div className="bg-[#121214] rounded-2xl border border-zinc-800 p-4 shadow-xs mb-8 space-y-4">
         <div className="flex flex-col md:flex-row items-center gap-3">
           {/* Search bar */}
           <div className="relative flex-1 w-full">
-            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
+            <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-3" />
             <input
               type="text"
               placeholder="Search by companion name, languages, or services..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 text-xs md:text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
+              className="w-full pl-9 pr-3 py-2 text-xs md:text-sm bg-zinc-900 border border-zinc-700 text-white placeholder-zinc-500 rounded-xl focus:border-pink-500 focus:ring-1 focus:ring-pink-500/40 focus:outline-hidden"
             />
           </div>
 
           {/* City selector */}
-          <div className="w-full md:w-56">
+          <div className="w-full md:w-64">
             <select
               value={selectedCity}
               onChange={(e) => setSelectedCity(e.target.value)}
-              className="w-full px-3 py-2 text-xs md:text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-hidden bg-white text-gray-700"
+              className="w-full px-3 py-2 text-xs md:text-sm bg-zinc-900 border border-zinc-700 text-zinc-200 rounded-xl focus:border-pink-500 focus:ring-1 focus:ring-pink-500/40 focus:outline-hidden"
             >
               <option value="all">All Locations</option>
               {POPULAR_LOCATIONS.map((loc) => (
@@ -183,35 +184,14 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({ onOpenAuth, onOpenMe
               ))}
             </select>
           </div>
-
-          {/* View Mode Toggle */}
-          <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl shrink-0 self-end md:self-auto">
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                viewMode === 'grid' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-600'
-              }`}
-            >
-              Grid View
-            </button>
-            <button
-              onClick={() => setViewMode('map')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 ${
-                viewMode === 'map' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-600'
-              }`}
-            >
-              <Map className="w-3.5 h-3.5" />
-              Map View
-            </button>
-          </div>
         </div>
 
         {/* Secondary Filters Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-4 pt-3 border-t border-gray-100 text-xs">
+        <div className="flex flex-wrap items-center justify-between gap-4 pt-3 border-t border-zinc-800/80 text-xs">
           <div className="flex flex-wrap items-center gap-4">
             {/* Price slider */}
             <div className="flex items-center gap-2">
-              <span className="text-gray-600 font-medium">Max Rate:</span>
+              <span className="text-zinc-400 font-medium">Max Rate:</span>
               <input
                 type="range"
                 min="300"
@@ -219,29 +199,30 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({ onOpenAuth, onOpenMe
                 step="100"
                 value={maxPrice}
                 onChange={(e) => setMaxPrice(Number(e.target.value))}
-                className="w-28 sm:w-36 accent-indigo-600 cursor-pointer"
+                className="w-24 sm:w-32 accent-pink-500 cursor-pointer"
               />
-              <span className="font-bold text-indigo-700">₹{maxPrice}/hr</span>
+              <span className="font-bold text-pink-400 font-mono">₹{maxPrice}/hr</span>
             </div>
 
-            {/* Availability toggle */}
-            <label className="flex items-center gap-2 cursor-pointer text-gray-700 font-medium">
+            {/* Availability checkbox */}
+            <label className="flex items-center gap-2 cursor-pointer select-none">
               <input
                 type="checkbox"
                 checked={onlyAvailable}
                 onChange={(e) => setOnlyAvailable(e.target.checked)}
-                className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                className="w-4 h-4 text-pink-500 rounded focus:ring-pink-500 border-zinc-700 bg-zinc-900"
               />
-              <span>Available Today Only</span>
+              <span className="text-zinc-300 font-medium">Available Now Only</span>
             </label>
           </div>
 
-          <div className="flex items-center gap-2 text-gray-500">
+          {/* Result Count & Live Refresh */}
+          <div className="flex items-center gap-2 text-zinc-400">
             <span>{filteredCompanions.length} companions found</span>
             <button
               onClick={fetchCompanions}
               disabled={loading}
-              className="p-1 hover:bg-gray-100 rounded text-gray-600"
+              className="p-1 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded cursor-pointer transition-colors"
               title="Refresh results"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
@@ -250,24 +231,23 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({ onOpenAuth, onOpenMe
         </div>
       </div>
 
-      {/* Content Rendering: Grid vs Map */}
+      {/* Content Rendering: Companion Grid */}
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20">
-          <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4" />
-          <p className="text-xs text-gray-500 font-medium">
+          <div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin mb-4" />
+          <p className="text-xs text-zinc-400 font-medium">
             Discovering verified companions near you...
           </p>
         </div>
       ) : filteredCompanions.length === 0 ? (
-        /* Proper Empty State: NEVER FAKE COMPANIONS */
-        <div className="bg-white rounded-3xl border border-gray-200 p-12 text-center max-w-lg mx-auto shadow-xs">
-          <div className="w-16 h-16 bg-gray-100 text-gray-400 rounded-2xl flex items-center justify-center mx-auto mb-4">
+        <div className="bg-[#121214] rounded-3xl border border-zinc-800 p-12 text-center max-w-lg mx-auto shadow-xs">
+          <div className="w-16 h-16 bg-zinc-900 border border-zinc-800 text-zinc-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <Users className="w-8 h-8" />
           </div>
-          <h3 className="font-bold text-gray-900 text-base">
+          <h3 className="font-bold text-white text-base">
             No companions available in your selected area.
           </h3>
-          <p className="text-xs text-gray-500 mt-2 leading-relaxed">
+          <p className="text-xs text-zinc-400 mt-2 leading-relaxed">
             There are currently no companion accounts registered matching your search filters in the database.
           </p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
@@ -278,35 +258,16 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({ onOpenAuth, onOpenMe
                 setMaxPrice(5000);
                 setOnlyAvailable(false);
               }}
-              className="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-xl"
+              className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold rounded-xl cursor-pointer transition-colors"
             >
               Reset Filters
             </button>
             <button
               onClick={() => onOpenAuth('signup', 'companion')}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl"
+              className="px-4 py-2 bg-pink-600 hover:bg-pink-500 text-white text-xs font-semibold rounded-xl cursor-pointer shadow-[0_0_12px_rgba(255,45,141,0.35)] transition-all"
             >
               Become the First Companion
             </button>
-          </div>
-        </div>
-      ) : viewMode === 'map' ? (
-        <div className="space-y-4">
-          <InteractiveMap
-            companions={filteredCompanions}
-            userLocation={location}
-            onSelectCompanion={(comp) => setSelectedCompanion(comp)}
-            height="500px"
-          />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredCompanions.map((comp) => (
-              <CompanionCard
-                key={comp.id}
-                companion={comp}
-                onSelect={(c) => setSelectedCompanion(c)}
-                onBook={(c) => handleBook(c)}
-              />
-            ))}
           </div>
         </div>
       ) : (

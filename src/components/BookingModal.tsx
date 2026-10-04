@@ -73,8 +73,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
   const hourlyRate = companion.hourly_rate || 500;
   const subtotal = hourlyRate * durationHours;
-  const platformFee = 0; // Strictly ₹0 per TimeMate Master Specification
-  const totalPrice = subtotal + platformFee;
+  const platformFee = 0; // ₹0 Guaranteed Platform Fee
+  const totalAmount = subtotal + platformFee;
 
   const handleSubmitBooking = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,12 +84,12 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     }
 
     if (user.id === companion.user_id) {
-      setErrorMessage('You cannot book yourself as a companion.');
+      setErrorMessage('You cannot book your own companion profile.');
       return;
     }
 
     if (!meetingLocation.trim()) {
-      setErrorMessage('Please specify a meeting location or public venue.');
+      setErrorMessage('Please specify a public meeting location.');
       return;
     }
 
@@ -99,34 +99,33 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     try {
       const supabase = getSupabaseClient();
 
-      const bookingRecord = {
+      const newBooking = {
         customer_id: user.id,
         companion_id: companion.user_id || companion.id,
-        date: date,
+        date,
         start_time: startTime,
         duration_hours: durationHours,
-        total_price: totalPrice,
-        payment_method: paymentMethod,
-        payment_status: 'pending', // Selecting online does NOT mean paid
-        booking_status: 'pending',
+        total_price: totalAmount,
         meeting_location: meetingLocation.trim(),
+        payment_method: paymentMethod,
+        payment_status: 'pending',
+        booking_status: 'pending',
       };
 
       const { data, error } = await supabase
         .from('bookings')
-        .insert(bookingRecord)
+        .insert(newBooking)
         .select()
         .single();
 
       if (error) {
-        // If remote database is unavailable or rejected insert, report exact real error
-        throw new Error(error.message);
+        throw error;
       }
 
       setSuccess(true);
 
-      // Trigger real notification
-      addNotification({
+      // Trigger local in-app notification
+      await addNotification({
         user_id: user.id,
         title: 'Booking Request Submitted',
         message: `Your booking request with ${companion.display_name} for ${date} at ${startTime} has been sent.`,
@@ -150,24 +149,24 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-2 sm:p-4 overflow-y-auto">
-      <div className="relative bg-white rounded-2xl max-w-lg w-full p-4 sm:p-6 md:p-8 shadow-2xl border border-gray-100 my-auto max-h-[92vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-2 sm:p-4 overflow-y-auto">
+      <div className="relative bg-[#121214] rounded-2xl max-w-lg w-full p-4 sm:p-6 md:p-8 shadow-2xl border border-zinc-800 my-auto max-h-[92vh] overflow-y-auto text-white">
         {/* Sticky Mobile Top Header with Back & Cross */}
-        <div className="flex items-center justify-between pb-3 mb-4 border-b border-gray-100">
+        <div className="flex items-center justify-between pb-3 mb-4 border-b border-zinc-800">
           <button
             onClick={onClose}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-800 font-bold text-xs transition-colors cursor-pointer shadow-xs"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 text-zinc-200 font-bold text-xs transition-colors cursor-pointer shadow-xs"
             aria-label="Go back"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Back</span>
           </button>
 
-          <span className="text-xs font-semibold text-gray-500">Booking Form</span>
+          <span className="text-xs font-semibold text-zinc-400">Booking Form</span>
 
           <button
             onClick={onClose}
-            className="p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 hover:text-gray-900 transition-colors shadow-xs cursor-pointer"
+            className="p-1.5 rounded-full bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 text-zinc-400 hover:text-white transition-colors shadow-xs cursor-pointer"
             aria-label="Close booking modal"
           >
             <X className="w-4 h-4" />
@@ -176,28 +175,28 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
         {/* Modal Header */}
         <div className="mb-6">
-          <div className="flex items-center gap-2 text-indigo-600 font-bold text-xs uppercase tracking-wider mb-1">
+          <div className="flex items-center gap-2 text-pink-400 font-bold text-xs uppercase tracking-wider mb-1">
             <Calendar className="w-4 h-4" />
             New Companionship Booking
           </div>
-          <h2 className="text-xl font-bold text-gray-900">
+          <h2 className="text-xl font-bold text-white">
             Book {companion.display_name}
           </h2>
-          <p className="text-xs text-gray-500 mt-0.5">
+          <p className="text-xs text-zinc-400 mt-0.5">
             Listed Rate: ₹{hourlyRate}/hr &bull; ₹0 Platform Fee
           </p>
         </div>
 
         {errorMessage && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-start gap-2">
-            <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+          <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-xs text-red-300 flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
             <span>{errorMessage}</span>
           </div>
         )}
 
         {success && (
-          <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 flex items-start gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+          <div className="mb-4 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-xs text-emerald-300 flex items-start gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
             <span>Booking created successfully! Redirecting...</span>
           </div>
         )}
@@ -206,7 +205,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           {/* Date & Time Grid */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">
+              <label className="block text-xs font-semibold text-zinc-300 mb-1">
                 Booking Date
               </label>
               <div className="relative">
@@ -216,13 +215,13 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   min={today}
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
+                  className="w-full px-3 py-2 text-xs bg-zinc-900 border border-zinc-700 text-white rounded-xl focus:border-pink-500 focus:ring-1 focus:ring-pink-500/40 focus:outline-hidden"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">
+              <label className="block text-xs font-semibold text-zinc-300 mb-1">
                 Start Time
               </label>
               <input
@@ -230,7 +229,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 required
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
-                className="w-full px-3 py-2 text-xs border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
+                className="w-full px-3 py-2 text-xs bg-zinc-900 border border-zinc-700 text-white rounded-xl focus:border-pink-500 focus:ring-1 focus:ring-pink-500/40 focus:outline-hidden"
               />
             </div>
           </div>
@@ -238,10 +237,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           {/* Duration Selector */}
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-semibold text-gray-700">
+              <label className="text-xs font-semibold text-zinc-300">
                 Duration (Hours)
               </label>
-              <span className="text-xs font-bold text-indigo-600">
+              <span className="text-xs font-bold text-pink-400">
                 {durationHours} {durationHours === 1 ? 'hour' : 'hours'}
               </span>
             </div>
@@ -251,10 +250,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   type="button"
                   key={hours}
                   onClick={() => setDurationHours(hours)}
-                  className={`py-2 text-xs font-bold rounded-xl border transition-all ${
+                  className={`py-2 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
                     durationHours === hours
-                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                      : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                      ? 'bg-pink-600 text-white border-pink-500 shadow-[0_0_10px_rgba(255,45,141,0.3)]'
+                      : 'border-zinc-800 bg-zinc-900 hover:border-zinc-700 text-zinc-300'
                   }`}
                 >
                   {hours}h
@@ -265,28 +264,28 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
           {/* Meeting Location */}
           <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1">
+            <label className="block text-xs font-semibold text-zinc-300 mb-1">
               Meeting Location / Public Venue
             </label>
             <div className="relative">
-              <MapPin className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
+              <MapPin className="w-4 h-4 text-zinc-500 absolute left-3 top-3" />
               <input
                 type="text"
                 required
                 placeholder="e.g. Starbucks Indiranagar or Mall Entrance"
                 value={meetingLocation}
                 onChange={(e) => setMeetingLocation(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 text-xs border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
+                className="w-full pl-9 pr-3 py-2 text-xs bg-zinc-900 border border-zinc-700 text-white placeholder-zinc-500 rounded-xl focus:border-pink-500 focus:ring-1 focus:ring-pink-500/40 focus:outline-hidden"
               />
             </div>
-            <p className="text-[10px] text-gray-500 mt-1">
+            <p className="text-[10px] text-zinc-500 mt-1">
               For safety, all first-time companionship meetings should take place in public venues.
             </p>
           </div>
 
           {/* Payment Method Selection */}
           <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+            <label className="block text-xs font-semibold text-zinc-300 mb-1.5">
               Select Payment Method
             </label>
             <div className="grid grid-cols-2 gap-3">
@@ -295,17 +294,17 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 type="button"
                 disabled={!cashAvailable}
                 onClick={() => setPaymentMethod('cash')}
-                className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all ${
+                className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all cursor-pointer ${
                   paymentMethod === 'cash' && cashAvailable
-                    ? 'border-indigo-600 bg-indigo-50 text-indigo-900 font-semibold'
-                    : !cashAvailable
-                    ? 'opacity-40 border-gray-200 cursor-not-allowed text-gray-400'
-                    : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                    ? 'border-pink-500 bg-pink-500/15 text-pink-300 font-semibold shadow-[0_0_10px_rgba(255,45,141,0.2)]'
+                    : cashAvailable
+                    ? 'border-zinc-800 bg-zinc-900 hover:border-zinc-700 text-zinc-400'
+                    : 'border-zinc-800/40 bg-zinc-900/40 text-zinc-600 cursor-not-allowed opacity-50'
                 }`}
               >
-                <Banknote className="w-5 h-5 mb-1 text-emerald-600" />
-                <span className="text-xs">Cash on Meetup</span>
-                <span className="text-[10px] text-gray-500">Pay directly at event</span>
+                <Banknote className="w-5 h-5 mb-1 text-emerald-400" />
+                <span className="text-xs font-bold text-white">Cash Direct</span>
+                <span className="text-[10px] text-zinc-400">Pay at meeting</span>
               </button>
 
               {/* Online option */}
@@ -313,84 +312,72 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 type="button"
                 disabled={!onlineAvailable}
                 onClick={() => setPaymentMethod('online')}
-                className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all ${
+                className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all cursor-pointer ${
                   paymentMethod === 'online' && onlineAvailable
-                    ? 'border-indigo-600 bg-indigo-50 text-indigo-900 font-semibold'
-                    : !onlineAvailable
-                    ? 'opacity-40 border-gray-200 cursor-not-allowed text-gray-400'
-                    : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                    ? 'border-pink-500 bg-pink-500/15 text-pink-300 font-semibold shadow-[0_0_10px_rgba(255,45,141,0.2)]'
+                    : onlineAvailable
+                    ? 'border-zinc-800 bg-zinc-900 hover:border-zinc-700 text-zinc-400'
+                    : 'border-zinc-800/40 bg-zinc-900/40 text-zinc-600 cursor-not-allowed opacity-50'
                 }`}
               >
-                <CreditCard className="w-5 h-5 mb-1 text-indigo-600" />
-                <span className="text-xs">Online UPI / Bank</span>
-                <span className="text-[10px] text-gray-500">
-                  {onlineAvailable ? 'Companion verified UPI' : 'Not configured by companion'}
+                <CreditCard className="w-5 h-5 mb-1 text-pink-400" />
+                <span className="text-xs font-bold text-white">Online Transfer</span>
+                <span className="text-[10px] text-zinc-400">
+                  {onlineAvailable ? 'UPI / Direct Bank' : 'Unavailable'}
                 </span>
               </button>
             </div>
-
-            {/* Online payment note */}
-            {paymentMethod === 'online' && onlineAvailable && (
-              <div className="mt-2 p-2.5 bg-blue-50 border border-blue-200 rounded-xl text-[11px] text-blue-900 space-y-1">
-                <div className="font-semibold flex items-center gap-1.5">
-                  <QrCode className="w-3.5 h-3.5 text-blue-600" />
-                  Companion UPI VPA: {companion.payment_settings?.upi_id}
-                </div>
-                <div className="text-blue-700 text-[10px]">
-                  Note: Payment status remains <strong>Pending</strong> until verified by backend/companion.
-                </div>
-              </div>
-            )}
           </div>
 
-          {/* Pricing Breakdown Card: Zero Platform Fee Guarantee */}
-          <div className="bg-gray-50 rounded-xl p-4 border border-gray-200 space-y-2">
-            <div className="flex items-center justify-between text-xs text-gray-600">
-              <span>
-                Companion rate (₹{hourlyRate} &times; {durationHours}h)
-              </span>
-              <span className="font-medium text-gray-900">₹{subtotal}</span>
+          {/* Online Payment Details Callout */}
+          {paymentMethod === 'online' && onlineAvailable && (
+            <div className="p-3 bg-zinc-900 rounded-xl border border-pink-500/30 text-xs text-zinc-300 space-y-2">
+              <div className="flex items-center gap-1.5 font-bold text-pink-400">
+                <QrCode className="w-4 h-4" />
+                <span>Companion Direct Payment Details</span>
+              </div>
+              {companion.payment_settings?.upi_id && (
+                <div className="flex justify-between font-mono bg-zinc-800/80 p-2 rounded-lg border border-zinc-700">
+                  <span className="text-zinc-400 text-[11px]">UPI ID:</span>
+                  <span className="font-bold text-white text-[11px]">
+                    {companion.payment_settings.upi_id}
+                  </span>
+                </div>
+              )}
             </div>
+          )}
 
-            <div className="flex items-center justify-between text-xs text-emerald-700 font-semibold">
+          {/* Pricing Breakdown Card */}
+          <div className="p-3.5 bg-zinc-900/90 rounded-2xl border border-zinc-800 text-xs space-y-1.5">
+            <div className="flex justify-between text-zinc-400">
+              <span>Rate ({durationHours} hours @ ₹{hourlyRate}/hr)</span>
+              <span className="font-semibold text-zinc-200">₹{subtotal}</span>
+            </div>
+            <div className="flex justify-between text-pink-400 font-medium">
               <span className="flex items-center gap-1">
                 <ShieldCheck className="w-3.5 h-3.5" />
-                TimeMate Platform Fee
+                Platform Booking Fee
               </span>
-              <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full text-[10px]">
-                ₹0 (Free)
-              </span>
+              <span className="font-bold">₹0 Free</span>
             </div>
-
-            <div className="border-t border-gray-200 pt-2 flex items-center justify-between font-bold text-sm text-gray-900">
-              <span>Customer Total</span>
-              <span className="text-indigo-700 text-base">₹{totalPrice}</span>
+            <div className="border-t border-zinc-800 pt-2 flex justify-between text-sm font-extrabold text-white">
+              <span>Total Payable to Companion</span>
+              <span className="text-pink-400 font-mono">₹{totalAmount}</span>
             </div>
           </div>
 
-          {/* Submit & Cancel Buttons */}
-          <div className="space-y-2 pt-2">
-            <button
-              type="submit"
-              disabled={loading || success}
-              className="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md shadow-indigo-600/20 disabled:opacity-60 transition-colors flex items-center justify-center gap-2 cursor-pointer"
-            >
-              {loading ? (
-                <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              ) : (
-                `Confirm & Request Booking (₹${totalPrice})`
-              )}
-            </button>
-
-            <button
-              type="button"
-              onClick={onClose}
-              className="w-full py-2.5 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              Cancel &amp; Go Back
-            </button>
-          </div>
+          {/* Submit CTA Button */}
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-3 bg-pink-600 hover:bg-pink-500 active:opacity-90 disabled:opacity-50 text-white font-bold text-xs sm:text-sm rounded-xl shadow-[0_0_15px_rgba(255,45,141,0.4)] transition-all flex items-center justify-center gap-2 cursor-pointer"
+          >
+            {loading ? (
+              <span>Submitting Request...</span>
+            ) : (
+              <span>Confirm &amp; Request Booking</span>
+            )}
+          </button>
         </form>
       </div>
     </div>

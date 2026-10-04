@@ -71,10 +71,10 @@ const MainApp: React.FC = () => {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
-        <TimeMateLogoIcon size={56} className="mb-4 shadow-xl animate-pulse" />
-        <div className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mb-2" />
-        <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">
+      <div className="min-h-screen bg-[#080808] flex flex-col items-center justify-center p-4">
+        <TimeMateLogoIcon size={56} className="mb-4 shadow-[0_0_25px_rgba(255,45,141,0.5)] animate-pulse" />
+        <div className="w-6 h-6 border-2 border-pink-500 border-t-transparent rounded-full animate-spin mb-2" />
+        <p className="text-xs text-zinc-400 font-semibold uppercase tracking-wider">
           Initializing TimeMate Secure Session...
         </p>
       </div>
@@ -82,7 +82,7 @@ const MainApp: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50/60 flex flex-col text-gray-900 pb-16 md:pb-0">
+    <div className="min-h-screen bg-[#080808] flex flex-col text-zinc-100 pb-16 md:pb-0 selection:bg-pink-500 selection:text-white">
       {/* Main Responsive Header Navigation */}
       <Navbar
         currentTab={currentTab}
@@ -124,50 +124,50 @@ const MainApp: React.FC = () => {
       </main>
 
       {/* Production Footer */}
-      <footer className="bg-white border-t border-gray-200 mt-16 py-8 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6 text-xs text-gray-500">
+      <footer className="bg-[#0c0c0e] border-t border-zinc-800/80 mt-16 py-8 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6 text-xs text-zinc-400">
           <div className="flex items-center gap-3">
             <TimeMateLogoIcon size={36} />
             <div>
-              <div className="font-black text-gray-900 text-sm flex items-center">
+              <div className="font-black text-white text-sm flex items-center">
                 <span>Time</span>
-                <span className="bg-gradient-to-r from-pink-500 to-purple-600 bg-clip-text text-transparent ml-0.5">
+                <span className="bg-gradient-to-r from-pink-500 via-pink-400 to-fuchsia-500 bg-clip-text text-transparent ml-0.5">
                   Mate
                 </span>
-                <span className="text-gray-400 font-normal ml-1.5">&bull; Location-Aware Companionship Marketplace</span>
+                <span className="text-zinc-500 font-normal ml-1.5 hidden sm:inline">&bull; Location-Aware Companionship Marketplace</span>
               </div>
-              <div className="text-[11px] text-emerald-700 font-semibold flex items-center gap-1 mt-0.5">
-                <ShieldCheck className="w-3.5 h-3.5" />
+              <div className="text-[11px] text-pink-400 font-semibold flex items-center gap-1 mt-0.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-pink-500" />
                 Guaranteed ₹0 Platform Fee on All Bookings
               </div>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-4 text-gray-600 font-medium">
+          <div className="flex flex-wrap items-center justify-center gap-4 text-zinc-400 font-medium">
             <button
               onClick={() => handleOpenLegal('terms')}
-              className="hover:text-indigo-600 transition-colors"
+              className="hover:text-pink-400 transition-colors cursor-pointer"
             >
               Terms of Service
             </button>
-            &bull;
+            <span className="text-zinc-600">&bull;</span>
             <button
               onClick={() => handleOpenLegal('privacy')}
-              className="hover:text-indigo-600 transition-colors"
+              className="hover:text-pink-400 transition-colors cursor-pointer"
             >
               Privacy Policy
             </button>
-            &bull;
+            <span className="text-zinc-600">&bull;</span>
             <button
               onClick={() => handleOpenLegal('safety')}
-              className="hover:text-indigo-600 transition-colors"
+              className="hover:text-pink-400 transition-colors cursor-pointer"
             >
               Safety Guidelines
             </button>
-            &bull;
+            <span className="text-zinc-600">&bull;</span>
             <a
               href="mailto:support.timemate@gmail.com"
-              className="hover:text-indigo-600 flex items-center gap-1 text-indigo-600 font-bold"
+              className="hover:text-pink-300 flex items-center gap-1 text-pink-400 font-bold"
             >
               <Mail className="w-3.5 h-3.5" />
               support.timemate@gmail.com
